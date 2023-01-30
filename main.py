@@ -149,6 +149,9 @@ def main():
                                                                           'if value is None')
     args = parser.parse_args()
 
+    setup_logger(args)
+    print_and_log(args)
+
     train_batches, test_batches, sample_dist, names = load_data('data/Incidents-subset', test_size=args.test_size,
                                                                 batch_size=args.batch_size)
 
