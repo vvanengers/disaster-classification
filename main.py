@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import torch
 from torch import device
-from torchvision import models
+from torchvision import models as tmodels
 
 from dataloader import load_data
 from utils import save
@@ -16,8 +16,8 @@ from utils import save
 logger = None
 
 models = {
-    'resnet34': models.resnet34,
-    'resnet18': models.resnet18
+    'resnet34': tmodels.resnet34,
+    'resnet18': tmodels.resnet18
 }
 
 
