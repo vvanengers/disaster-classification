@@ -3,6 +3,8 @@ import copy
 import hashlib
 import logging
 import time
+from pathlib import Path
+
 import numpy as np
 import torch
 from torch import device
@@ -31,8 +33,8 @@ def setup_logger(args):
     args_copy.log_interval = 1
     args_copy.seed = 0
 
-    log_path = './logs/{0}_{1}_{2}.log'.format(args.model, args.density,
-                                               hashlib.md5(str(args_copy).encode('utf-8')).hexdigest()[:8])
+    Path('logs/').mkdir(parents=True, exist_ok=True)
+    log_path = f'logs/{time.time()}'
 
     logger.setLevel(logging.INFO)
     formatter = logging.Formatter(fmt='%(asctime)s: %(message)s', datefmt='%H:%M:%S')
