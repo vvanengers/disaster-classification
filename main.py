@@ -104,6 +104,7 @@ def train_model(device, model, criterion, optimizer, scheduler, dataloaders, sav
                 # track history if only in train
                 with torch.set_grad_enabled(phase == 'train'):
                     outputs = model(inputs)
+                    print_and_log(f'outputs: {str(outputs.device)}. labels: {str(labels.device)}')
                     _, preds = torch.max(outputs, 1)
                     loss = criterion(outputs, labels)
 
@@ -173,13 +174,12 @@ def main():
     if args.model not in models:
         raise AttributeError(f'Model {args.model} unknown. ')
 
-    model_ft = models[args.model](pretrained=args.pretrained)
+    model_ft = models[args.model](pretrained=args.pretrained).to(device)
     num_ftrs = model_ft.fc.in_features
     # Here the size of each output sample is set to 2.
     # Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
     model_ft.fc = torch.nn.Linear(num_ftrs, len(names))
 
-    model_ft = model_ft.to(device)
 
     weight = torch.tensor(sample_dist) / np.sum(sample_dist)
     criterion = torch.nn.CrossEntropyLoss(weight=weight)
