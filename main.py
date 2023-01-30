@@ -121,7 +121,7 @@ def main():
     print(f'Training with {device}')
     device = torch.device(device)
 
-    model_ft = models.resnet18(pretrained=args.pretrained)
+    model_ft = models.resnet34(pretrained=args.pretrained)
     num_ftrs = model_ft.fc.in_features
     # Here the size of each output sample is set to 2.
     # Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
