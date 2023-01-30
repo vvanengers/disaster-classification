@@ -117,7 +117,9 @@ def main():
     dataloaders = {'train': train_batches}
 
     # set the device to cuda if gpu is available, otherwise use cpu
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    print(f'Training with {device}')
+    device = torch.device()
 
     model_ft = models.resnet18(pretrained=args.pretrained)
     num_ftrs = model_ft.fc.in_features
