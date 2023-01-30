@@ -102,6 +102,7 @@ def train_model(device, model, criterion, optimizer, scheduler, dataloaders, sav
                 # forward
                 # track history if only in train
                 with torch.set_grad_enabled(phase == 'train'):
+                    print_and_log(f'model: {str(next(model.parameters()).device)}')
                     print_and_log(f'inputs: {str(inputs.device)}')
                     outputs = model(inputs)
                     print_and_log(f'outputs: {str(outputs.device)}. labels: {str(labels.device)}')
@@ -180,6 +181,7 @@ def main():
     # Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
     model_ft.fc = torch.nn.Linear(num_ftrs, len(names))
 
+    model_ft = model_ft.to(device)
 
     weight = torch.tensor(sample_dist) / np.sum(sample_dist)
     criterion = torch.nn.CrossEntropyLoss(weight=weight)
