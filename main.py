@@ -34,7 +34,7 @@ def setup_logger(args):
     args_copy.seed = 0
 
     Path('logs/').mkdir(parents=True, exist_ok=True)
-    log_path = f'logs/{time.time()}'
+    log_path = f'logs/{time.strftime("%Y%m%d%H%M%S")}'
 
     logger.setLevel(logging.INFO)
     formatter = logging.Formatter(fmt='%(asctime)s: %(message)s', datefmt='%H:%M:%S')
@@ -172,7 +172,8 @@ def main():
 
     model_ft = model_ft.to(device)
 
-    criterion = torch.nn.CrossEntropyLoss()
+    weight = torch.tensor(sample_dist) / np.sum(sample_dist)
+    criterion = torch.nn.CrossEntropyLoss(weight=weight)
 
     # Observe that all parameters are being optimized
     optimizer_ft = torch.optim.SGD(model_ft.parameters(), lr=args.lr, momentum=args.momentum)
