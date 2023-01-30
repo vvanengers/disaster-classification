@@ -15,6 +15,7 @@ from utils import save
 logger = None
 
 models = {
+    'resnet50': tmodels.resnet50,
     'resnet34': tmodels.resnet34,
     'resnet18': tmodels.resnet18
 }
