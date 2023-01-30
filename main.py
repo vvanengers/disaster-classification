@@ -141,7 +141,7 @@ def main():
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
     parser.add_argument('--test_size', type=float, default=0.2, help='Test size in train-test split.')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size of training and testing data.')
-    parser.add_argument('--pretrained', action='store_true', default=False)
+    parser.add_argument('--pretrained', action='store_true', default=True)
     parser.add_argument('--epochs', type=int, default=64, help='Number of training epochs.')
     parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate.')
     parser.add_argument('--momentum', type=float, default=0.9, help='Momentum.')
