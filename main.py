@@ -15,6 +15,11 @@ from utils import save
 
 logger = None
 
+models = {
+    'resnet34': models.resnet34,
+    'resnet18': models.resnet18
+}
+
 
 def setup_logger(args):
     global logger
@@ -139,6 +144,7 @@ def train_model(device, model, criterion, optimizer, scheduler, dataloaders, sav
 
 def main():
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
+    parser.add_argument('--model', type=str, default='resnet18', help='Model to use.')
     parser.add_argument('--test_size', type=float, default=0.2, help='Test size in train-test split.')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size of training and testing data.')
     parser.add_argument('--pretrained', action='store_true', default=True)
@@ -164,7 +170,10 @@ def main():
     print_and_log(f'Training with {device}')
     device = torch.device(device)
 
-    model_ft = models.resnet34(pretrained=args.pretrained)
+    if args.model not in models:
+        raise AttributeError(f'Model {args.model} unknown. ')
+
+    model_ft = models[args.model](pretrained=args.pretrained)
     num_ftrs = model_ft.fc.in_features
     # Here the size of each output sample is set to 2.
     # Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
@@ -195,7 +204,7 @@ def main():
         accuracy_hist = checkpoint['accuracy_hist']
 
     # set model save name to current time
-    model_save_name = time.strftime("%Y%m%d%H%M%S")
+    model_save_name = time.strftime("%Y%m%d%H%M%S") + args.model
     best_model, loss_list, acc_list = train_model(device, model_ft, criterion, optimizer_ft, exp_lr_scheduler, dataloaders,
                            args.model_save_path, model_save_name, args.epochs, start_epoch, accuracy_hist,
                                                   loss_hist)
