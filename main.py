@@ -7,7 +7,6 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from torch import device
 from torchvision import models as tmodels
 
 from dataloader import load_data
@@ -167,9 +166,9 @@ def main():
     dataloaders = {'train': train_batches}
 
     # set the device to cuda if gpu is available, otherwise use cpu
-    device = "cuda:0" if torch.cuda.is_available() else "cpu"
-    print_and_log(f'Training with {device}')
-    device = torch.device(device)
+    d = "cuda:0" if torch.cuda.is_available() else "cpu"
+    print_and_log(f'Training with {d}')
+    device = torch.device(d)
 
     if args.model not in models:
         raise AttributeError(f'Model {args.model} unknown. ')
