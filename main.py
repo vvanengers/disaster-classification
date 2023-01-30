@@ -102,6 +102,7 @@ def train_model(device, model, criterion, optimizer, scheduler, dataloaders, sav
                 # forward
                 # track history if only in train
                 with torch.set_grad_enabled(phase == 'train'):
+                    print_and_log(f'inputs: {str(inputs.device)}')
                     outputs = model(inputs)
                     print_and_log(f'outputs: {str(outputs.device)}. labels: {str(labels.device)}')
                     _, preds = torch.max(outputs, 1)
