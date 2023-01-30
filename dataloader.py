@@ -16,23 +16,7 @@ def load_data(root_dir='./data/Incidents-subset', test_size=0.2, batch_size=64, 
 
     # Use the ImageFolder class to load the images from your root directory
     dataset = datasets.ImageFolder(root_dir, transform=transform)
-    mask = np.ones(len(dataset), dtype=bool)
-
-    images_to_remove = []
-    # Check if there are any corrupted images in the dataset
-    for i, (image_path, c) in enumerate(dataset.imgs):
-        try:
-            # Open the image using the PIL library
-            with Image.open(image_path) as image:
-                image.verify()
-        except (IOError, SyntaxError) as e:
-            # If there is an error opening the image, it is likely corrupted
-            # Remove it from the dataset
-            print(f"Corrupted image: {image_path}")
-            mask[i] = False
-            images_to_remove.append((image_path, c))
-    for x in images_to_remove:
-        dataset.imgs.remove(x)
+    remove_corrupted_images(dataset)
 
     dataset_size = len(dataset)
     indices = list(range(dataset_size))
@@ -54,3 +38,22 @@ def load_data(root_dir='./data/Incidents-subset', test_size=0.2, batch_size=64, 
     names = [index_to_names[label] for label in labels]
 
     return train_batches, test_batches, sample_dist, names
+
+
+def remove_corrupted_images(dataset):
+    mask = np.ones(len(dataset), dtype=bool)
+    images_to_remove = []
+    # Check if there are any corrupted images in the dataset
+    for i, (image_path, c) in enumerate(dataset.imgs):
+        try:
+            # Open the image using the PIL library
+            with Image.open(image_path) as image:
+                image.verify()
+        except (IOError, SyntaxError) as e:
+            # If there is an error opening the image, it is likely corrupted
+            # Remove it from the dataset
+            print(f"Corrupted image: {image_path}")
+            mask[i] = False
+            images_to_remove.append((image_path, c))
+    for x in images_to_remove:
+        dataset.imgs.remove(x)

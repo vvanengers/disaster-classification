@@ -21,7 +21,7 @@ def checkpoint(path, name, epoch, model_state_dict, optimizer_state_dict, loss_h
     save(obj, path, name)
 
 
-def train_model(model, criterion, optimizer, scheduler, dataloaders, save_path, save_name, num_epochs, start_epoch,
+def train_model(device, model, criterion, optimizer, scheduler, dataloaders, save_path, save_name, num_epochs, start_epoch,
                 accuracy_hist, loss_hist):
     loss_list = []
     acc_list = []
@@ -47,7 +47,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, save_path, 
 
             # Iterate over data.
             for i, (inputs, labels) in enumerate(dataloaders[phase]):
-                print(f'{i}/{len(dataloaders[phase])}')
+                # print(f'{i}/{len(dataloaders[phase])}')
 
                 inputs = inputs.to(device)
                 labels = labels.to(device)
@@ -101,7 +101,7 @@ def main():
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
     parser.add_argument('--test_size', type=float, default=0.2, help='Test size in train-test split.')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size of training and testing data.')
-    parser.add_argument('--pretrained', type=float, action='store_true', default=False)
+    parser.add_argument('--pretrained', action='store_true', default=False)
     parser.add_argument('--epochs', type=int, default=64, help='Number of training epochs.')
     parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate.')
     parser.add_argument('--momentum', type=float, default=0.9, help='Momentum.')
@@ -111,7 +111,7 @@ def main():
                                                                           'if value is None')
     args = parser.parse_args()
 
-    train_batches, test_batches, sample_dist, names = load_data('../data/Incidents-subset', test_size=args.test_size,
+    train_batches, test_batches, sample_dist, names = load_data('data/Incidents-subset', test_size=args.test_size,
                                                                 batch_size=args.batch_size)
 
     dataloaders = {'train': train_batches}
@@ -119,35 +119,38 @@ def main():
     # set the device to cuda if gpu is available, otherwise use cpu
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    model = models.resnet18(pretrained=args.pretrained)
-    num_ftrs = model.fc.in_features
+    model_ft = models.resnet18(pretrained=args.pretrained)
+    num_ftrs = model_ft.fc.in_features
     # Here the size of each output sample is set to 2.
     # Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
-    model.fc = torch.nn.Linear(num_ftrs, len(names))
+    model_ft.fc = torch.nn.Linear(num_ftrs, len(names))
+
+    model_ft = model_ft.to(device)
+
+    criterion = torch.nn.CrossEntropyLoss()
 
     # Observe that all parameters are being optimized
-    optimizer = torch.optim.SGD(model.parameters(), args.lr, args.momentum)
+    optimizer_ft = torch.optim.SGD(model_ft.parameters(), lr=args.lr, momentum=args.momentum)
+
+    # Decay LR by a factor of 0.1 every 7 epochs
+    exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer_ft, step_size=args.stepsize, gamma=0.1)
+
 
     # load previous model from checkpoint if path is given
     accuracy_hist, loss_hist = [], []
     start_epoch = 0
     if args.load_model_path:
         checkpoint = torch.load(args.load_model_path)
-        model.load_state_dict(checkpoint['model_state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        model_ft.load_state_dict(checkpoint['model_state_dict'])
+        optimizer_ft.load_state_dict(checkpoint['optimizer_state_dict'])
         start_epoch = checkpoint['epoch']
         loss_hist = checkpoint['loss_hist']
         accuracy_hist = checkpoint['accuracy_hist']
 
-    criterion = torch.nn.CrossEntropyLoss()
-    # Decay LR by a factor of gamma every stepsize epochs
-    exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.stepsize, gamma=0.1)
-
-    model = model.to(device)
 
     # set model save name to current time
     model_save_name = time.strftime("%Y%m%d%H%M%S")
-    best_model, loss_list, acc_list = train_model(model, criterion, optimizer, exp_lr_scheduler, dataloaders,
+    best_model, loss_list, acc_list = train_model(device, model_ft, criterion, optimizer_ft, exp_lr_scheduler, dataloaders,
                            args.model_save_path, model_save_name, args.epochs, start_epoch, accuracy_hist,
                                                   loss_hist)
 
