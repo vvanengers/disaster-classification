@@ -142,13 +142,13 @@ def main():
     accuracy_hist, loss_hist = [], []
     start_epoch = 0
     if args.load_model_path:
+        print(f'Loading model from {args.load_model_path}')
         checkpoint = torch.load(args.load_model_path)
         model_ft.load_state_dict(checkpoint['model_state_dict'])
         optimizer_ft.load_state_dict(checkpoint['optimizer_state_dict'])
         start_epoch = checkpoint['epoch']
         loss_hist = checkpoint['loss_hist']
         accuracy_hist = checkpoint['accuracy_hist']
-
 
     # set model save name to current time
     model_save_name = time.strftime("%Y%m%d%H%M%S")
