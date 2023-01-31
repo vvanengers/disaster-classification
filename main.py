@@ -72,14 +72,14 @@ def checkpoint(path, name, args, epoch, model_state_dict, optimizer_state_dict, 
 
 def train_model(args, device, model, criterion, optimizer, scheduler, dataloaders, save_path, save_name, num_epochs, start_epoch,
                 accuracy_hist, loss_hist, mask=None):
-    loss_list = []
-    acc_list = []
+    loss_list = loss_hist
+    acc_list = accuracy_hist
     since = time.time()
 
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0.0
 
-    for epoch in range(num_epochs):
+    for epoch in np.arange(start_epoch, num_epochs, 1):
         print_and_log(f'Epoch {epoch}/{num_epochs - 1}')
         print_and_log('-' * 10)
 
