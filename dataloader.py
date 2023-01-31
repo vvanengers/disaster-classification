@@ -44,9 +44,9 @@ def load_data(root_dir='./data/Incidents-subset', val_size=0.05, test_size=0.05,
     test_split = Subset(dataset, test_indices)
 
     # create batches
-    train_batches = DataLoader(train_split, batch_size=batch_size, shuffle=True, sampler=sampler)
-    val_batches = DataLoader(val_split, batch_size=batch_size, shuffle=True, sampler=sampler)
-    test_batches = DataLoader(test_split, batch_size=batch_size, shuffle=True, sampler=sampler)
+    train_batches = DataLoader(train_split, batch_size=batch_size, sampler=sampler)
+    val_batches = DataLoader(val_split, batch_size=batch_size, sampler=sampler)
+    test_batches = DataLoader(test_split, batch_size=batch_size, sampler=sampler)
     # return sample_dist for adjusting the loss value based on the image counts
 
     index_to_names = {i: name for i, name in enumerate(dataset.classes)}
