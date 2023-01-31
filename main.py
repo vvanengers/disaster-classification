@@ -57,14 +57,15 @@ def print_and_log(msg):
     logger.info(msg)
 
 
-def checkpoint(path, name, args, epoch, model_state_dict, optimizer_state_dict, loss_hist, accuracy_hist):
+def checkpoint(path, name, args, epoch, model_state_dict, optimizer_state_dict, loss_hist, accuracy_hist, best_acc):
     obj = {
         'args': args,
         'epoch': epoch,
         'model_state_dict': model_state_dict,
         'optimizer_state_dict': optimizer_state_dict,
         'loss_hist': loss_hist,
-        'accuracy_hist': accuracy_hist
+        'accuracy_hist': accuracy_hist,
+        'best_acc': best_acc # validation
     }
     save(obj, path, name)
 
@@ -84,7 +85,7 @@ def train_model(args, device, model, criterion, optimizer, scheduler, dataloader
 
         # Each epoch has a training and validation phase
         # for phase in ['train', 'val']:
-        for phase in ['train']:
+        for phase in ['train', 'val']:
             if phase == 'train':
                 model.train()  # Set model to training mode
             else:
@@ -136,7 +137,7 @@ def train_model(args, device, model, criterion, optimizer, scheduler, dataloader
                 best_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
 
-        checkpoint(save_path, save_name, args, epoch, model.state_dict(), optimizer.state_dict(), loss_list, acc_list)
+        checkpoint(save_path, save_name, args, epoch, model.state_dict(), optimizer.state_dict(), loss_list, acc_list, best_acc)
 
     time_elapsed = time.time() - since
     print_and_log(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s')
@@ -151,7 +152,8 @@ def train_model(args, device, model, criterion, optimizer, scheduler, dataloader
 def main():
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
     parser.add_argument('--model', type=str, default='resnet18', help='Model to use.')
-    parser.add_argument('--test_size', type=float, default=0.2, help='Test size in train-test split.')
+    parser.add_argument('--val_size', type=float, default=0.05, help='Validation size in train-val-test split.')
+    parser.add_argument('--test_size', type=float, default=0.05, help='Test size in train-val-test split.')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size of training and testing data.')
     parser.add_argument('--pretrained', action='store_true', default=True)
     parser.add_argument('--epochs', type=int, default=64, help='Number of training epochs.')
@@ -167,10 +169,10 @@ def main():
     setup_logger(args)
     print_and_log(args)
 
-    train_batches, test_batches, sample_dist, names = load_data('data/Incidents-subset', test_size=args.test_size,
+    train_batches, val_batches, test_batches, sample_dist, names = load_data('data/Incidents-subset', test_size=args.test_size,
                                                                 batch_size=args.batch_size)
 
-    dataloaders = {'train': train_batches}
+    dataloaders = {'train': train_batches, 'val': val_batches}
 
     # set the device to cuda if gpu is available, otherwise use cpu
     d = "cuda:0" if torch.cuda.is_available() else "cpu"

@@ -4,7 +4,7 @@ from torch.utils.data import Subset, DataLoader
 from torchvision import transforms, datasets
 
 
-def load_data(root_dir='./data/Incidents-subset', test_size=0.2, batch_size=64, seed=42):
+def load_data(root_dir='./data/Incidents-subset', val_size=0.05, test_size=0.05, batch_size=64, seed=42):
     # Define the transforms to apply to your images
     # In this example, we resize the images to 256x256 and normalize them
     transform = transforms.Compose([
@@ -20,24 +20,30 @@ def load_data(root_dir='./data/Incidents-subset', test_size=0.2, batch_size=64, 
 
     dataset_size = len(dataset)
     indices = list(range(dataset_size))
-    split = int(np.floor(test_size * dataset_size))
+    # split = int(np.floor(test_size * dataset_size))
+    split1 = int(dataset_size * (1-(val_size+test_size)))
+    split2 = int(dataset_size * test_size) + split1
 
-    train_indices, test_indices = indices[split:], indices[:split]
+    train_indices = indices[:split1]
+    val_indices =  indices[split1:split2]
+    test_indices = indices[split2:]
 
     # generate subset based on indices
     train_split = Subset(dataset, train_indices)
+    val_split = Subset(dataset, val_indices)
     test_split = Subset(dataset, test_indices)
 
     # create batches
     train_batches = DataLoader(train_split, batch_size=batch_size, shuffle=True)
-    test_batches = DataLoader(test_split, batch_size=batch_size)
+    val_batches = DataLoader(test_split, batch_size=batch_size, shuffle=True)
+    test_batches = DataLoader(test_split, batch_size=batch_size, shuffle=True)
     # return sample_dist for adjusting the loss value based on the image counts
 
     index_to_names = {i: name for i, name in enumerate(dataset.classes)}
     labels, sample_dist = np.unique(dataset.targets, return_counts=True)
     names = [index_to_names[label] for label in labels]
 
-    return train_batches, test_batches, sample_dist, names
+    return train_batches, val_batches, test_batches, sample_dist, names
 
 
 def remove_corrupted_images(dataset):
