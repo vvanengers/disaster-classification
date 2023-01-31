@@ -1,6 +1,7 @@
 import numpy as np
+import torch
 from PIL import Image
-from torch.utils.data import Subset, DataLoader
+from torch.utils.data import Subset, DataLoader, WeightedRandomSampler
 from torchvision import transforms, datasets
 
 
@@ -20,12 +21,21 @@ def load_data(root_dir='./data/Incidents-subset', val_size=0.05, test_size=0.05,
 
     dataset_size = len(dataset)
     indices = list(range(dataset_size))
+
+    labels, sample_dist = np.unique(dataset.targets, return_counts=True)
+    weight = 1. / sample_dist
+    samples_weight = weight[dataset.targets]
+
+    samples_weight = torch.from_numpy(samples_weight)
+    samples_weight = samples_weight.double()
+    sampler = WeightedRandomSampler(samples_weight, len(samples_weight))
+
     # split = int(np.floor(test_size * dataset_size))
     split1 = int(dataset_size * (1-(val_size+test_size)))
     split2 = int(dataset_size * test_size) + split1
 
     train_indices = indices[:split1]
-    val_indices =  indices[split1:split2]
+    val_indices = indices[split1:split2]
     test_indices = indices[split2:]
 
     # generate subset based on indices
@@ -34,13 +44,12 @@ def load_data(root_dir='./data/Incidents-subset', val_size=0.05, test_size=0.05,
     test_split = Subset(dataset, test_indices)
 
     # create batches
-    train_batches = DataLoader(train_split, batch_size=batch_size, shuffle=True)
-    val_batches = DataLoader(test_split, batch_size=batch_size, shuffle=True)
-    test_batches = DataLoader(test_split, batch_size=batch_size, shuffle=True)
+    train_batches = DataLoader(train_split, batch_size=batch_size, shuffle=True, sampler=sampler)
+    val_batches = DataLoader(val_split, batch_size=batch_size, shuffle=True, sampler=sampler)
+    test_batches = DataLoader(test_split, batch_size=batch_size, shuffle=True, sampler=sampler)
     # return sample_dist for adjusting the loss value based on the image counts
 
     index_to_names = {i: name for i, name in enumerate(dataset.classes)}
-    labels, sample_dist = np.unique(dataset.targets, return_counts=True)
     names = [index_to_names[label] for label in labels]
 
     return train_batches, val_batches, test_batches, sample_dist, names

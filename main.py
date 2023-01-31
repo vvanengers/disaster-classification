@@ -215,8 +215,6 @@ def main():
 
     model_ft = model_ft.to(device)
 
-    # weight = torch.tensor(sample_dist) / np.sum(sample_dist)
-    # weight = torch.tensor([1]*len(weight))-weight
     criterion = torch.nn.CrossEntropyLoss().to(device)
 
     # Observe that all parameters are being optimized
