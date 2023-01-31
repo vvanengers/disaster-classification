@@ -145,7 +145,7 @@ def train_model(args, device, model, criterion, optimizer, scheduler, dataloader
 
     # load best model weights
     model.load_state_dict(best_model_wts)
-    checkpoint(save_path, save_name, args, num_epochs, model.state_dict(), optimizer.state_dict(), loss_list, acc_list)
+    checkpoint(save_path, save_name, args, num_epochs, model.state_dict(), optimizer.state_dict(), loss_list, acc_list, best_acc)
     return model, loss_list, acc_list
 
 
