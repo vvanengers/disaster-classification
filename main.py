@@ -248,7 +248,7 @@ def main():
         mask.add_module(model_ft, sparse_init=args.sparse_init, density=args.density)
 
     best_model, loss_list, acc_list = train_model(args, device, model_ft, criterion, optimizer_ft, exp_lr_scheduler, dataloaders,
-                           args.model_save_path, model_save_name, args.epochs, start_epoch, accuracy_hist,
+                           args.model_save_path, args.result_save_path, model_save_name, args.epochs, start_epoch, accuracy_hist,
                                                   loss_hist, mask)
 
 
