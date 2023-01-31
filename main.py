@@ -9,7 +9,9 @@ import numpy as np
 import torch
 from torchvision import models as tmodels
 
+import sparselearning
 from dataloader import load_data
+from sparselearning.core import CosineDecay, Masking
 from utils import save
 
 logger = None
@@ -68,7 +70,7 @@ def checkpoint(path, name, args, epoch, model_state_dict, optimizer_state_dict, 
 
 
 def train_model(args, device, model, criterion, optimizer, scheduler, dataloaders, save_path, save_name, num_epochs, start_epoch,
-                accuracy_hist, loss_hist):
+                accuracy_hist, loss_hist, mask=None):
     loss_list = []
     acc_list = []
     since = time.time()
@@ -111,7 +113,10 @@ def train_model(args, device, model, criterion, optimizer, scheduler, dataloader
                     # backward + optimize only if in training phase
                     if phase == 'train':
                         loss.backward()
-                        optimizer.step()
+                        if mask is not None:
+                            mask.step()
+                        else:
+                            optimizer.step()
 
                 # statistics
                 running_loss += loss.item() * inputs.size(0)
@@ -156,6 +161,7 @@ def main():
     parser.add_argument('--model_save_path', type=str, default='models/', help='Where to save the models.')
     parser.add_argument('--load_model_path', type=str, default=None, help='Path to model to load. No model is loaded'
                                                                           'if value is None')
+    sparselearning.core.add_sparse_args(parser)
     args = parser.parse_args()
 
     setup_logger(args)
@@ -205,9 +211,18 @@ def main():
 
     # set model save name to current time
     model_save_name = time.strftime("%Y%m%d%H%M%S") + args.model
+
+    mask = None
+    if args.sparse:
+        decay = CosineDecay(args.death_rate, len(dataloaders['train']) * (args.epochs))
+        mask = Masking(optimizer_ft, death_rate=args.death_rate, death_mode=args.death, death_rate_decay=decay,
+                       growth_mode=args.growth,
+                       redistribution_mode=args.redistribution, args=args)
+        mask.add_module(model_ft, sparse_init=args.sparse_init, density=args.density)
+
     best_model, loss_list, acc_list = train_model(args, device, model_ft, criterion, optimizer_ft, exp_lr_scheduler, dataloaders,
                            args.model_save_path, model_save_name, args.epochs, start_epoch, accuracy_hist,
-                                                  loss_hist)
+                                                  loss_hist, mask)
 
 
 if __name__ == '__main__':
