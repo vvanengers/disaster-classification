@@ -57,20 +57,7 @@ def print_and_log(msg):
     logger.info(msg)
 
 
-def checkpoint(path, name, args, epoch, model_state_dict, optimizer_state_dict, loss_hist, accuracy_hist, best_acc):
-    obj = {
-        'args': args,
-        'epoch': epoch,
-        'model_state_dict': model_state_dict,
-        'optimizer_state_dict': optimizer_state_dict,
-        'loss_hist': loss_hist,
-        'accuracy_hist': accuracy_hist,
-        'best_acc': best_acc # validation
-    }
-    save(obj, path, name)
-
-
-def train_model(args, device, model, criterion, optimizer, scheduler, dataloaders, save_path, save_name, num_epochs, start_epoch,
+def train_model(args, device, model, criterion, optimizer, scheduler, dataloaders, model_save_path, result_save_path, save_name, num_epochs, start_epoch,
                 accuracy_hist, loss_hist, mask=None):
     loss_list = loss_hist
     acc_list = accuracy_hist
@@ -137,7 +124,10 @@ def train_model(args, device, model, criterion, optimizer, scheduler, dataloader
                 best_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
 
-        checkpoint(save_path, save_name, args, epoch, model.state_dict(), optimizer.state_dict(), loss_list, acc_list, best_acc)
+        state_dict = model.state_dict()
+        optimizer_state_dict = optimizer.state_dict()
+        checkpoint(acc_list, args, best_acc, epoch, loss_list, model_save_path, optimizer_state_dict, result_save_path,
+                   save_name, state_dict)
 
     time_elapsed = time.time() - since
     print_and_log(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s')
@@ -145,8 +135,42 @@ def train_model(args, device, model, criterion, optimizer, scheduler, dataloader
 
     # load best model weights
     model.load_state_dict(best_model_wts)
-    checkpoint(save_path, save_name, args, num_epochs, model.state_dict(), optimizer.state_dict(), loss_list, acc_list, best_acc)
+    model_state_dict = model.state_dict()
+    dict1 = optimizer.state_dict()
+    obj1 = {
+        'args': args,
+        'epoch': num_epochs,
+        'model_state_dict': model_state_dict,
+        'optimizer_state_dict': dict1,
+        'loss_hist': loss_list,
+        'accuracy_hist': acc_list,
+        'best_acc': best_acc  # validation
+    }
+    checkpoint(acc_list, args, best_acc, epoch, loss_list, model_save_path, optimizer_state_dict, result_save_path,
+               save_name, state_dict)
     return model, loss_list, acc_list
+
+
+def checkpoint(acc_list, args, best_acc, epoch, loss_list, model_save_path, optimizer_state_dict, result_save_path,
+               save_name, state_dict):
+    obj = {
+        'args': args,
+        'epoch': epoch,
+        'model_state_dict': state_dict,
+        'optimizer_state_dict': optimizer_state_dict,
+        'loss_hist': loss_list,
+        'accuracy_hist': acc_list,
+        'best_acc': best_acc  # validation
+    }
+    save(obj, model_save_path, save_name)
+    obj = {
+        'args': args,
+        'epoch': epoch,
+        'loss_hist': loss_list,
+        'accuracy_hist': acc_list,
+        'best_acc': best_acc  # validation
+    }
+    save(obj, result_save_path, save_name)
 
 
 def main():
@@ -161,6 +185,7 @@ def main():
     parser.add_argument('--momentum', type=float, default=0.9, help='Momentum.')
     parser.add_argument('--stepsize', type=int, default=10, help='Stepsize.')
     parser.add_argument('--model_save_path', type=str, default='models/', help='Where to save the models.')
+    parser.add_argument('--result_save_path', type=str, default='results/', help='Where to save the results.')
     parser.add_argument('--load_model_path', type=str, default=None, help='Path to model to load. No model is loaded'
                                                                           'if value is None')
     sparselearning.core.add_sparse_args(parser)
