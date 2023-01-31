@@ -55,8 +55,9 @@ def print_and_log(msg):
     logger.info(msg)
 
 
-def checkpoint(path, name, epoch, model_state_dict, optimizer_state_dict, loss_hist, accuracy_hist):
+def checkpoint(path, name, args, epoch, model_state_dict, optimizer_state_dict, loss_hist, accuracy_hist):
     obj = {
+        'args': args,
         'epoch': epoch,
         'model_state_dict': model_state_dict,
         'optimizer_state_dict': optimizer_state_dict,
@@ -66,7 +67,7 @@ def checkpoint(path, name, epoch, model_state_dict, optimizer_state_dict, loss_h
     save(obj, path, name)
 
 
-def train_model(device, model, criterion, optimizer, scheduler, dataloaders, save_path, save_name, num_epochs, start_epoch,
+def train_model(args, device, model, criterion, optimizer, scheduler, dataloaders, save_path, save_name, num_epochs, start_epoch,
                 accuracy_hist, loss_hist):
     loss_list = []
     acc_list = []
@@ -130,7 +131,7 @@ def train_model(device, model, criterion, optimizer, scheduler, dataloaders, sav
                 best_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
 
-        checkpoint(save_path, save_name, epoch, model.state_dict(), optimizer.state_dict(), loss_list, acc_list)
+        checkpoint(save_path, save_name, args, epoch, model.state_dict(), optimizer.state_dict(), loss_list, acc_list)
 
     time_elapsed = time.time() - since
     print_and_log(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s')
@@ -138,7 +139,7 @@ def train_model(device, model, criterion, optimizer, scheduler, dataloaders, sav
 
     # load best model weights
     model.load_state_dict(best_model_wts)
-    checkpoint(save_path, save_name, num_epochs, model.state_dict(), optimizer.state_dict(), loss_list, acc_list)
+    checkpoint(save_path, save_name, args, num_epochs, model.state_dict(), optimizer.state_dict(), loss_list, acc_list)
     return model, loss_list, acc_list
 
 
@@ -204,7 +205,7 @@ def main():
 
     # set model save name to current time
     model_save_name = time.strftime("%Y%m%d%H%M%S") + args.model
-    best_model, loss_list, acc_list = train_model(device, model_ft, criterion, optimizer_ft, exp_lr_scheduler, dataloaders,
+    best_model, loss_list, acc_list = train_model(args, device, model_ft, criterion, optimizer_ft, exp_lr_scheduler, dataloaders,
                            args.model_save_path, model_save_name, args.epochs, start_epoch, accuracy_hist,
                                                   loss_hist)
 
