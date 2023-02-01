@@ -194,7 +194,7 @@ def main():
     setup_logger(args)
     print_and_log(args)
 
-    train_batches, val_batches, test_batches, sample_dist, names = load_data('data/Incidents-subset', test_size=args.test_size,
+    train_batches, val_batches, test_batches, names = load_data('data/Incidents-subset', test_size=args.test_size,
                                                                 batch_size=args.batch_size)
 
     dataloaders = {'train': train_batches, 'val': val_batches}

@@ -1,7 +1,9 @@
+import copy
+
 import numpy as np
 import torch
 from PIL import Image
-from torch.utils.data import Subset, DataLoader, WeightedRandomSampler
+from torch.utils.data import Subset, DataLoader, WeightedRandomSampler, random_split
 from torchvision import transforms, datasets
 
 
@@ -22,37 +24,42 @@ def load_data(root_dir='./data/Incidents-subset', val_size=0.05, test_size=0.05,
     dataset_size = len(dataset)
     indices = list(range(dataset_size))
 
-    labels, sample_dist = np.unique(dataset.targets, return_counts=True)
-    weight = 1. / sample_dist
-    samples_weight = weight[dataset.targets]
-
-    samples_weight = torch.from_numpy(samples_weight)
-    samples_weight = samples_weight.double()
-    sampler = WeightedRandomSampler(samples_weight, len(samples_weight))
-
-    # split = int(np.floor(test_size * dataset_size))
-    split1 = int(dataset_size * (1-(val_size+test_size)))
+    split1 = int(dataset_size * (1 - (val_size + test_size)))
     split2 = int(dataset_size * test_size) + split1
+
 
     train_indices = indices[:split1]
     val_indices = indices[split1:split2]
     test_indices = indices[split2:]
 
+    train_data_set = copy.deepcopy(dataset)
+    train_data_set.imgs = train_data_set.imgs[:split1]
+    train_data_set.targets = train_data_set.targets[:split1]
+
     # generate subset based on indices
-    train_split = Subset(dataset, train_indices)
     val_split = Subset(dataset, val_indices)
     test_split = Subset(dataset, test_indices)
 
+    # rest for testing
+    labels = np.unique(dataset.targets)
+    _, sample_dist = np.unique(train_data_set.targets, return_counts=True)
+    weight = 1. / sample_dist
+    samples_weight = weight[train_data_set.targets]
+
+    samples_weight = torch.from_numpy(samples_weight)
+    samples_weight = samples_weight.double()
+    sampler = WeightedRandomSampler(samples_weight, len(samples_weight))
+
     # create batches
-    train_batches = DataLoader(train_split, batch_size=batch_size, sampler=sampler)
-    val_batches = DataLoader(val_split, batch_size=batch_size, sampler=sampler)
-    test_batches = DataLoader(test_split, batch_size=batch_size, sampler=sampler)
+    train_batches = DataLoader(train_data_set, batch_size=batch_size, sampler=sampler)
+    val_batches = DataLoader(val_split, batch_size=batch_size)
+    test_batches = DataLoader(test_split, batch_size=batch_size)
     # return sample_dist for adjusting the loss value based on the image counts
 
     index_to_names = {i: name for i, name in enumerate(dataset.classes)}
     names = [index_to_names[label] for label in labels]
 
-    return train_batches, val_batches, test_batches, sample_dist, names
+    return train_batches, val_batches, test_batches, names
 
 
 def remove_corrupted_images(dataset):
