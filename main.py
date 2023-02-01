@@ -57,10 +57,12 @@ def print_and_log(msg):
     logger.info(msg)
 
 
-def train_model(args, device, model, criterion, optimizer, scheduler, dataloaders, model_save_path, result_save_path, save_name, num_epochs, start_epoch,
-                accuracy_hist, loss_hist, mask=None):
+def train_model(args, device, model, criterion, optimizer, scheduler, dataloaders, model_save_path, result_save_path,
+                save_name, num_epochs, start_epoch,
+                train_hist, val_hist, loss_hist, mask=None):
     loss_list = loss_hist
-    acc_list = accuracy_hist
+    train_hist = train_hist
+    val_hist = val_hist
     since = time.time()
 
     best_model_wts = copy.deepcopy(model.state_dict())
@@ -115,7 +117,7 @@ def train_model(args, device, model, criterion, optimizer, scheduler, dataloader
             epoch_loss = running_loss / len(dataloaders[phase])
             epoch_acc = running_corrects.double() / len(dataloaders[phase])
             loss_list.append(epoch_loss)
-            acc_list.append(epoch_acc)
+            (train_hist if phase == 'train' else val_hist).append(epoch_acc)
 
             print_and_log(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
 
@@ -126,7 +128,8 @@ def train_model(args, device, model, criterion, optimizer, scheduler, dataloader
 
         state_dict = model.state_dict()
         optimizer_state_dict = optimizer.state_dict()
-        checkpoint(acc_list, args, best_acc, epoch, loss_list, model_save_path, optimizer_state_dict, result_save_path,
+        checkpoint(train_hist, val_hist, loss_hist, args, best_acc, epoch, model_save_path, optimizer_state_dict,
+                   result_save_path,
                    save_name, state_dict)
 
     time_elapsed = time.time() - since
@@ -137,37 +140,31 @@ def train_model(args, device, model, criterion, optimizer, scheduler, dataloader
     model.load_state_dict(best_model_wts)
     model_state_dict = model.state_dict()
     dict1 = optimizer.state_dict()
-    obj1 = {
-        'args': args,
-        'epoch': num_epochs,
-        'model_state_dict': model_state_dict,
-        'optimizer_state_dict': dict1,
-        'loss_hist': loss_list,
-        'accuracy_hist': acc_list,
-        'best_acc': best_acc  # validation
-    }
-    checkpoint(acc_list, args, best_acc, epoch, loss_list, model_save_path, optimizer_state_dict, result_save_path,
+    checkpoint(train_hist, val_hist, loss_hist, args, best_acc, epoch, model_save_path, optimizer_state_dict,
+               result_save_path,
                save_name, state_dict)
-    return model, loss_list, acc_list
+    return model
 
 
-def checkpoint(acc_list, args, best_acc, epoch, loss_list, model_save_path, optimizer_state_dict, result_save_path,
+def checkpoint(train_hist, val_hist, loss_hist, args, best_acc, epoch, model_save_path, optimizer_state_dict, result_save_path,
                save_name, state_dict):
     obj = {
         'args': args,
         'epoch': epoch,
         'model_state_dict': state_dict,
         'optimizer_state_dict': optimizer_state_dict,
-        'loss_hist': loss_list,
-        'accuracy_hist': acc_list,
+        'loss_hist': loss_hist,
+        'train_hist': train_hist,
+        'val_hist': val_hist,
         'best_acc': best_acc  # validation
     }
     save(obj, model_save_path, save_name)
     obj = {
         'args': args,
         'epoch': epoch,
-        'loss_hist': loss_list,
-        'accuracy_hist': acc_list,
+        'loss_hist': loss_hist,
+        'train_hist': train_hist,
+        'val_hist': val_hist,
         'best_acc': best_acc  # validation
     }
     save(obj, result_save_path, save_name)
@@ -222,9 +219,8 @@ def main():
 
     exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer_ft, step_size=args.stepsize, gamma=0.001)
 
-
     # load previous model from checkpoint if path is given
-    accuracy_hist, loss_hist = [], []
+    train_hist, val_hist, loss_hist = [], [], []
     start_epoch = 0
     if args.load_model_path:
         print_and_log(f'Loading model from {args.load_model_path}')
@@ -233,7 +229,8 @@ def main():
         optimizer_ft.load_state_dict(checkpoint['optimizer_state_dict'])
         start_epoch = checkpoint['epoch']
         loss_hist = checkpoint['loss_hist']
-        accuracy_hist = checkpoint['accuracy_hist']
+        train_hist = checkpoint['train_hist']
+        val_hist = checkpoint['val_hist']
 
     # set model save name to current time
     model_save_name = time.strftime("%Y%m%d%H%M%S") + args.model
@@ -246,8 +243,10 @@ def main():
                        redistribution_mode=args.redistribution, args=args)
         mask.add_module(model_ft, sparse_init=args.sparse_init, density=args.density)
 
-    best_model, loss_list, acc_list = train_model(args, device, model_ft, criterion, optimizer_ft, exp_lr_scheduler, dataloaders,
-                           args.model_save_path, args.result_save_path, model_save_name, args.epochs, start_epoch, accuracy_hist,
+    best_model = train_model(args, device, model_ft, criterion, optimizer_ft, exp_lr_scheduler,
+                                                  dataloaders,
+                                                  args.model_save_path, args.result_save_path, model_save_name,
+                                                  args.epochs, start_epoch, train_hist, val_hist,
                                                   loss_hist, mask)
 
 
