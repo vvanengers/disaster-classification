@@ -79,3 +79,5 @@ def remove_corrupted_images(dataset):
             images_to_remove.append((image_path, c))
     for x in images_to_remove:
         dataset.imgs.remove(x)
+        dataset.targets.remove(x[1])
+
