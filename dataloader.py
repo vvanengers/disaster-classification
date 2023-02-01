@@ -54,7 +54,7 @@ def load_data(root_dir='./data/Incidents-subset', val_size=0.05, test_size=0.05,
 
     samples_weight = torch.from_numpy(samples_weight)
     samples_weight = samples_weight.double()
-    sampler = WeightedRandomSampler(samples_weight, len(len(train_data_set)))
+    sampler = WeightedRandomSampler(samples_weight, len(train_data_set))
 
     # create batches
     train_batches = DataLoader(train_data_set, batch_size=batch_size, sampler=sampler)
