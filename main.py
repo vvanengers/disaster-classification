@@ -1,9 +1,6 @@
 import argparse
 import copy
-import hashlib
-import logging
 import time
-from pathlib import Path
 
 import numpy as np
 import torch
@@ -12,49 +9,14 @@ from torchvision import models as tmodels
 import sparselearning
 from dataloader import load_data
 from sparselearning.core import CosineDecay, Masking
-from utils import save
+from utils import save, setup_logger, print_and_log
 
-logger = None
 
 models = {
     'resnet50': tmodels.resnet50,
     'resnet34': tmodels.resnet34,
     'resnet18': tmodels.resnet18
 }
-
-
-def setup_logger(args):
-    global logger
-    if logger == None:
-        logger = logging.getLogger()
-    else:  # wish there was a logger.close()
-        for handler in logger.handlers[:]:  # make a copy of the list
-            logger.removeHandler(handler)
-
-    args_copy = copy.deepcopy(args)
-    # copy to get a clean hash
-    # use the same log file hash if iterations or verbose are different
-    # these flags do not change the results
-    args_copy.iters = 1
-    args_copy.verbose = False
-    args_copy.log_interval = 1
-    args_copy.seed = 0
-
-    Path('logs/').mkdir(parents=True, exist_ok=True)
-    log_path = f'logs/{time.strftime("%Y%m%d%H%M%S")}'
-
-    logger.setLevel(logging.INFO)
-    formatter = logging.Formatter(fmt='%(asctime)s: %(message)s', datefmt='%H:%M:%S')
-
-    fh = logging.FileHandler(log_path)
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
-
-
-def print_and_log(msg):
-    global logger
-    print(msg)
-    logger.info(msg)
 
 
 def train_model(args, device, model, criterion, optimizer, scheduler, dataloaders, model_save_path, result_save_path,
