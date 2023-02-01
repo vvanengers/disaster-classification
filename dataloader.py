@@ -6,9 +6,11 @@ import torchvision
 from PIL import Image
 from torch.utils.data import Subset, DataLoader, WeightedRandomSampler, random_split
 from torchvision import transforms, datasets
+from main import print_and_log
 
 
 def load_data(root_dir='./data/Incidents-subset', val_size=0.05, test_size=0.05, batch_size=64, seed=42):
+    print_and_log('Start loading dataset')
     # Define the transforms to apply to your images
     # In this example, we resize the images to 256x256 and normalize them
     transform = transforms.Compose([
@@ -72,7 +74,7 @@ def load_data(root_dir='./data/Incidents-subset', val_size=0.05, test_size=0.05,
 
 def augment(dataset):
     # First Aug
-    print("Augmentating 1...")
+    print_and_log("Augmentating 1...")
     aug_dataset1 = []
     first_transform = torchvision.transforms.RandomVerticalFlip(p=1)
 
@@ -84,13 +86,13 @@ def augment(dataset):
         aug_dataset1.append(transf_tuple)
 
     # Second Aug
-    print("Augmentating 2...")
+    print_and_log("Augmentating 2...")
     aug_dataset2 = []
     second_transform = torchvision.transforms.RandomHorizontalFlip(p=0.5)
 
     for i in range(0, len(dataset)):
         if i % 100 == 0:
-            print(f'{i}/{len(dataset)}', end='\r')
+            print_and_log(f'{i}/{len(dataset)}', end='\r')
         transf_img = second_transform(dataset[i][0])
         transf_tuple = (transf_img, dataset[i][1])
         aug_dataset2.append(transf_tuple)
@@ -111,7 +113,7 @@ def remove_corrupted_images(dataset):
         except (IOError, SyntaxError) as e:
             # If there is an error opening the image, it is likely corrupted
             # Remove it from the dataset
-            print(f"Corrupted image: {image_path}")
+            print_and_log(f"Corrupted image: {image_path}")
             mask[i] = False
             images_to_remove.append((image_path, c))
     for x in images_to_remove:
