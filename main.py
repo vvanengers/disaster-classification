@@ -74,6 +74,7 @@ def train_model(args, device, model, criterion, optimizer, scheduler, dataloader
 
         # Each epoch has a training and validation phase
         # for phase in ['train', 'val']:
+        print_and_log(f'Learning rate: {scheduler.get_lr()}')
         best_acc, best_model_wts, optimizer_state_dict, state_dict = train_epoch('train', args, best_acc, best_model_wts,
                                                                                  criterion, dataloaders, device, epoch,
                                                                                  loss_hist, loss_list, mask, model,
@@ -201,7 +202,7 @@ def main():
     setup_logger(args)
     print_and_log(args)
 
-    train_batches, val_batches, test_batches, names = load_data('data/Incidents-subset', test_size=args.test_size,
+    train_batches, val_batches, test_batches, names, weight = load_data('data/Incidents-subset', test_size=args.test_size,
                                                                 batch_size=args.batch_size)
 
     dataloaders = {'train': train_batches, 'val': val_batches}
@@ -222,7 +223,7 @@ def main():
 
     model_ft = model_ft.to(device)
 
-    criterion = torch.nn.CrossEntropyLoss().to(device)
+    criterion = torch.nn.CrossEntropyLoss(weight=torch.tensor(weight)).to(device)
 
     # Observe that all parameters are being optimized
     optimizer_ft = torch.optim.Adam(model_ft.parameters(), lr=args.lr)

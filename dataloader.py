@@ -49,7 +49,7 @@ def load_data(root_dir='./data/Incidents-subset', val_size=0.05, test_size=0.05,
     # rest for testing
     labels = np.unique(dataset.targets)
     _, sample_dist = np.unique(train_data_set.targets, return_counts=True)
-    weight = 1. / sample_dist
+    weight = 1/(sample_dist / np.sum(sample_dist))
     samples_weight = weight[train_data_set.targets]
 
     samples_weight = torch.from_numpy(samples_weight)
@@ -65,7 +65,7 @@ def load_data(root_dir='./data/Incidents-subset', val_size=0.05, test_size=0.05,
     index_to_names = {i: name for i, name in enumerate(dataset.classes)}
     names = [index_to_names[label] for label in labels]
 
-    return train_batches, val_batches, test_batches, names
+    return train_batches, val_batches, test_batches, names, weight
 
 
 def remove_corrupted_images(dataset):
