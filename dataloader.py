@@ -21,6 +21,12 @@ def load_data(root_dir='./data/Incidents-subset', val_size=0.05, test_size=0.05,
     dataset = datasets.ImageFolder(root_dir, transform=transform)
     remove_corrupted_images(dataset)
 
+    # Shuffle dataset
+    s_ind = (list(range(len(dataset))))
+    np.random.shuffle(s_ind)
+    dataset.imgs = np.array(dataset.imgs)[s_ind]
+    dataset.targets = np.array(dataset.targets)[s_ind]
+
     dataset_size = len(dataset)
     indices = list(range(dataset_size))
 
