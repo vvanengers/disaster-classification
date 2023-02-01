@@ -2,6 +2,7 @@ import copy
 
 import numpy as np
 import torch
+import torchvision
 from PIL import Image
 from torch.utils.data import Subset, DataLoader, WeightedRandomSampler, random_split
 from torchvision import transforms, datasets
@@ -20,6 +21,7 @@ def load_data(root_dir='./data/Incidents-subset', val_size=0.05, test_size=0.05,
     # Use the ImageFolder class to load the images from your root directory
     dataset = datasets.ImageFolder(root_dir, transform=transform)
     remove_corrupted_images(dataset)
+    dataset = augment(dataset)
 
     # Shuffle dataset
     s_ind = (list(range(len(dataset))))
@@ -67,6 +69,35 @@ def load_data(root_dir='./data/Incidents-subset', val_size=0.05, test_size=0.05,
 
     return train_batches, val_batches, test_batches, names, weight
 
+
+def augment(dataset):
+    # First Aug
+    print("Augmentating 1...")
+    aug_dataset1 = []
+    first_transform = torchvision.transforms.RandomVerticalFlip(p=1)
+
+    for i in range(0, len(dataset)):
+        if i % 100 == 0:
+            print(f'{i}/{len(dataset)}', end='\r')
+        transf_img = first_transform(dataset[i][0])
+        transf_tuple = (transf_img, dataset[i][1])
+        aug_dataset1.append(transf_tuple)
+
+    # Second Aug
+    print("Augmentating 2...")
+    aug_dataset2 = []
+    second_transform = torchvision.transforms.RandomHorizontalFlip(p=0.5)
+
+    for i in range(0, len(dataset)):
+        if i % 100 == 0:
+            print(f'{i}/{len(dataset)}', end='\r')
+        transf_img = second_transform(dataset[i][0])
+        transf_tuple = (transf_img, dataset[i][1])
+        aug_dataset2.append(transf_tuple)
+
+    dataset = torch.utils.data.ConcatDataset([dataset, aug_dataset1])
+    dataset = torch.utils.data.ConcatDataset([dataset, aug_dataset2])
+    return dataset
 
 def remove_corrupted_images(dataset):
     mask = np.ones(len(dataset), dtype=bool)
