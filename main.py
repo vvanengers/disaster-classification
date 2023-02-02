@@ -110,9 +110,9 @@ def do_epoch(phase, dataloader, model, criterion, optimizer, scheduler, mask, de
         all_labels += labels.data
     if phase == 'train':
         scheduler.step()
-    print_and_log(f'Total correct: {running_corrects}, Dataloader length: {len(dataloader)}')
-    epoch_loss = running_loss / len(dataloader)
-    epoch_acc = running_corrects.double() / len(dataloader)
+    print_and_log(f'Total correct: {running_corrects}, Dataloader length: {len(all_preds)}')
+    epoch_loss = running_loss / len(all_preds)
+    epoch_acc = running_corrects.double() / len(all_preds)
     print_and_log(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
 
     return epoch_loss, epoch_acc, all_preds, all_labels
