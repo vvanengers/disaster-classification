@@ -20,7 +20,7 @@ models = {
 
 
 def train_model(args, device, model, criterion, optimizer, scheduler, train_data_loader, val_data_loader, num_epochs,
-                start_epoch, model_checkpointer, result_checkpointer, mask=None):
+                start_epoch, model_checkpointer, result_checkpointer, mask=None, layer_freeze_count=None):
     # start timer
     since = time.time()
 
@@ -65,7 +65,7 @@ def train_model(args, device, model, criterion, optimizer, scheduler, train_data
     return model
 
 
-def do_epoch(phase, dataloader, model, criterion, optimizer, scheduler, mask, device):
+def do_epoch(phase, dataloader, model, criterion, optimizer, scheduler, mask, device, layer_freeze_count=None):
     if phase == 'train':
         model.train()  # Set model to training mode
     else:
@@ -86,6 +86,9 @@ def do_epoch(phase, dataloader, model, criterion, optimizer, scheduler, mask, de
         # forward
         # track history if only in train
         with torch.set_grad_enabled(phase == 'train'):
+            # layer freezing
+            for param in model.parameters()[:-layer_freeze_count if layer_freeze_count > 0 else None]:
+                param.requires_grad = False
             outputs = model(inputs)
             _, preds = torch.max(outputs, 1)
             loss = criterion(outputs, labels)
@@ -118,6 +121,7 @@ def main():
     parser.add_argument('--val_size', type=float, default=0.05, help='Validation size in train-val-test split.')
     parser.add_argument('--test_size', type=float, default=0.05, help='Test size in train-val-test split.')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size of training and testing data.')
+    parser.add_argument('--layer_freeze_count', type=int, default=99, help='Number of layers to unfreeze')
     parser.add_argument('--train', action='store_true', default=True)
     parser.add_argument('--test', action='store_true', default=True)
     parser.add_argument('--pretrained', action='store_true', default=True)
@@ -131,7 +135,6 @@ def main():
     parser.add_argument('--result_save_path', type=str, default='results/', help='Where to save the results.')
     parser.add_argument('--dataset_path', type=str, default='data/Incidents-subset',
                         help='Where to load the dataset from')
-
     sparselearning.core.add_sparse_args(parser)
     args = parser.parse_args()
 
