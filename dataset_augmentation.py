@@ -35,12 +35,12 @@ def image_augmentation(dataset):
         'gaussian': lambda image: gaussian(image, sigma=(random.randint(0, 5) * 2 + 1), multichannel=True)
     }
 
-    setup_logger('')
-    print_and_log('Start augmenting dataset')
+    # setup_logger('')
+    print('Start augmenting dataset')
     dataset_size = len(dataset)
     for index in range(dataset_size):
         if index % 500 == 0:
-            print_and_log(f'{index}/{dataset_size}')
+            print(f'{index}/{dataset_size}')
         path = dataset.imgs[index][0]
         image = io.imread(path)
         io.imshow(image)
