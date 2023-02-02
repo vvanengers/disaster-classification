@@ -14,9 +14,9 @@ def load_data(root_dir='./data/Incidents-subset', val_size=0.05, test_size=0.05,
     # Shuffle dataset
     s_ind = (list(range(len(dataset))))
     np.random.shuffle(s_ind)
-    dataset.imgs = np.array(dataset.imgs)[s_ind]
-    dataset.targets = np.array(dataset.targets)[s_ind]
-    dataset.samples = np.array(dataset.samples)[s_ind]
+    dataset.imgs = torch.tensor(np.array(dataset.imgs)[s_ind])
+    dataset.targets = torch.tensor(np.array(dataset.targets)[s_ind])
+    dataset.samples = torch.tensor(np.array(dataset.samples)[s_ind])
 
     dataset_size = len(dataset)
     indices = list(range(dataset_size))
