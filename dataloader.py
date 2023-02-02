@@ -60,7 +60,7 @@ def load_data(root_dir='./data/Incidents-subset', val_size=0.05, test_size=0.05,
 
 
 def load_data_from_folder(root_dir):
-    print_and_log('Start data loading')
+    # print_and_log('Start data loading')
     # Define the transforms to apply to your images
     # In this example, we resize the images to 256x256 and normalize them
     transform = transforms.Compose([
