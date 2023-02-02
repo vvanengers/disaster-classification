@@ -7,10 +7,10 @@ import torch
 from torchvision import models as tmodels
 
 import sparselearning
-from dataloader import load_data
+from utils.checkpointer import Checkpointer
+from utils.dataloader import load_data
 from sparselearning.core import CosineDecay, Masking
-from utils import save, setup_logger, print_and_log
-
+from utils.utils import print_and_log, setup_logger
 
 models = {
     'resnet50': tmodels.resnet50,
@@ -19,63 +19,64 @@ models = {
 }
 
 
-def train_model(args, device, model, criterion, optimizer, scheduler, dataloaders, model_save_path, result_save_path,
-                save_name, num_epochs, start_epoch,
-                train_hist, val_hist, loss_hist, mask=None):
-    loss_list = loss_hist
-    train_hist = train_hist
-    val_hist = val_hist
+def train_model(args, device, model, criterion, optimizer, scheduler, train_data_loader, val_data_loader, num_epochs,
+                start_epoch, model_checkpointer, result_checkpointer, mask=None):
+    # start timer
     since = time.time()
 
+    # best model baseline
     best_model_wts = copy.deepcopy(model.state_dict())
+    # best accuracy baseline
     best_acc = 0.0
 
     for epoch in np.arange(start_epoch, num_epochs, 1):
         print_and_log(f'Epoch {epoch}/{num_epochs - 1}')
+        print_and_log(f'Learning rate: {scheduler.get_lr()}')
         print_and_log('-' * 10)
 
         # Each epoch has a training and validation phase
-        # for phase in ['train', 'val']:
-        print_and_log(f'Learning rate: {scheduler.get_lr()}')
-        best_acc, best_model_wts, optimizer_state_dict, state_dict = train_epoch('train', args, best_acc, best_model_wts,
-                                                                                 criterion, dataloaders, device, epoch,
-                                                                                 loss_hist, loss_list, mask, model,
-                                                                                 model_save_path, optimizer,
-                                                                                 result_save_path, save_name, scheduler,
-                                                                                 train_hist, val_hist)
 
-    best_acc, best_model_wts, optimizer_state_dict, state_dict = train_epoch('val', args, best_acc, best_model_wts,
-                                                                             criterion, dataloaders, device, epoch,
-                                                                             loss_hist, loss_list, mask, model,
-                                                                             model_save_path, optimizer,
-                                                                             result_save_path, save_name, scheduler,
-                                                                             train_hist, val_hist)
+        # training phase
+        train_loss, train_acc, _, __ = do_epoch('train', train_data_loader, model, criterion, optimizer, scheduler,
+                                                mask, device)
+        result_checkpointer.add_in_list('train_loss', [epoch, train_loss])
+        result_checkpointer.add_in_list('train_acc', [epoch, train_acc])
+
+        # validation phase
+        val_loss, val_acc, _, __ = do_epoch('val', val_data_loader, model, criterion, optimizer, scheduler, mask,
+                                            device)
+        result_checkpointer.add_in_list('val_loss', [epoch, val_loss])
+        result_checkpointer.add_in_list('val_acc', [epoch, val_acc])
+
+        # save best model
+        if val_acc > best_acc:
+            best_acc = val_acc
+            best_model_wts = copy.deepcopy(model.state_dict())
+            model_checkpointer.add_singular('model_state_dict', model.state_dict())
+            model_checkpointer.add_singular('optimizer_state_dict', optimizer.state_dict())
+
+    # get time
     time_elapsed = time.time() - since
     print_and_log(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s')
     print_and_log(f'Best val Acc: {best_acc:4f}')
 
     # load best model weights
     model.load_state_dict(best_model_wts)
-    model_state_dict = model.state_dict()
-    dict1 = optimizer.state_dict()
-    checkpoint(train_hist, val_hist, loss_hist, args, best_acc, epoch, model_save_path, optimizer_state_dict,
-               result_save_path,
-               save_name, state_dict)
     return model
 
 
-def train_epoch(phase, args, best_acc, best_model_wts, criterion, dataloaders, device, epoch, loss_hist, loss_list, mask,
-                model, model_save_path, optimizer, result_save_path, save_name, scheduler, train_hist, val_hist):
+def do_epoch(phase, dataloader, model, criterion, optimizer, scheduler, mask, device):
     if phase == 'train':
         model.train()  # Set model to training mode
     else:
         model.eval()  # Set model to evaluate mode
     running_loss = 0.0
     running_corrects = 0
-    # Iterate over data.
-    for i, (inputs, labels) in enumerate(dataloaders[phase]):
-        # print(f'{i}/{len(dataloaders[phase])}')
+    all_preds = []
+    all_labels = []
 
+    # Iterate over data.
+    for i, (inputs, labels) in enumerate(dataloader):
         inputs = inputs.to(device)
         labels = labels.to(device)
 
@@ -100,47 +101,15 @@ def train_epoch(phase, args, best_acc, best_model_wts, criterion, dataloaders, d
         # statistics
         running_loss += loss.item() * inputs.size(0)
         running_corrects += torch.sum(preds == labels.data)
+        all_preds += preds
+        all_labels += labels.data
     if phase == 'train':
         scheduler.step()
-    epoch_loss = running_loss / len(dataloaders[phase])
-    epoch_acc = running_corrects.double() / len(dataloaders[phase])
-    loss_list.append(epoch_loss)
-    (train_hist if phase == 'train' else val_hist).append(epoch_acc)
+    epoch_loss = running_loss / len(dataloader)
+    epoch_acc = running_corrects.double() / len(dataloader)
     print_and_log(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
-    # deep copy the model
-    if phase == 'val' and epoch_acc > best_acc:
-        best_acc = epoch_acc
-        best_model_wts = copy.deepcopy(model.state_dict())
-    state_dict = model.state_dict()
-    optimizer_state_dict = optimizer.state_dict()
-    checkpoint(train_hist, val_hist, loss_hist, args, best_acc, epoch, model_save_path, optimizer_state_dict,
-               result_save_path,
-               save_name, state_dict)
-    return best_acc, best_model_wts, optimizer_state_dict, state_dict
 
-
-def checkpoint(train_hist, val_hist, loss_hist, args, best_acc, epoch, model_save_path, optimizer_state_dict, result_save_path,
-               save_name, state_dict):
-    obj = {
-        'args': args,
-        'epoch': epoch,
-        'model_state_dict': state_dict,
-        'optimizer_state_dict': optimizer_state_dict,
-        'loss_hist': loss_hist,
-        'train_hist': train_hist,
-        'val_hist': val_hist,
-        'best_acc': best_acc  # validation
-    }
-    save(obj, model_save_path, save_name)
-    obj = {
-        'args': args,
-        'epoch': epoch,
-        'loss_hist': loss_hist,
-        'train_hist': train_hist,
-        'val_hist': val_hist,
-        'best_acc': best_acc  # validation
-    }
-    save(obj, result_save_path, save_name)
+    return epoch_loss, epoch_acc, all_preds, all_labels
 
 
 def main():
@@ -149,53 +118,64 @@ def main():
     parser.add_argument('--val_size', type=float, default=0.05, help='Validation size in train-val-test split.')
     parser.add_argument('--test_size', type=float, default=0.05, help='Test size in train-val-test split.')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size of training and testing data.')
+    parser.add_argument('--train', action='store_true', default=True)
+    parser.add_argument('--test', action='store_true', default=True)
     parser.add_argument('--pretrained', action='store_true', default=True)
     parser.add_argument('--epochs', type=int, default=64, help='Number of training epochs.')
     parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate.')
     parser.add_argument('--momentum', type=float, default=0.9, help='Momentum.')
     parser.add_argument('--stepsize', type=int, default=10, help='Stepsize.')
     parser.add_argument('--model_save_path', type=str, default='models/', help='Where to save the models.')
-    parser.add_argument('--result_save_path', type=str, default='results/', help='Where to save the results.')
-    parser.add_argument('--load_model_path', type=str, default=None, help='Path to model to load. No model is loaded'
+    parser.add_argument('--model_load_path', type=str, default=None, help='Path to model to load. No model is loaded'
                                                                           'if value is None')
+    parser.add_argument('--result_save_path', type=str, default='results/', help='Where to save the results.')
+
     sparselearning.core.add_sparse_args(parser)
     args = parser.parse_args()
 
     setup_logger(args)
     print_and_log(args)
 
-    train_batches, val_batches, test_batches, names, weight = load_data('data/Incidents-subset', test_size=args.test_size,
-                                                                batch_size=args.batch_size)
+    # setup checkpointing
+    # set save name to current time
+    save_name = time.strftime("%Y%m%d%H%M%S") + args.model
+    model_checkpointer = Checkpointer(args.model_save_path, args, autosave=False)
+    result_checkpointer = Checkpointer(args.result_save_path, save_name, args, autosave=False)
 
-    dataloaders = {'train': train_batches, 'val': val_batches}
+    # get dataset
+    train_batches, val_batches, test_batches, names, weight = load_data('data/Incidents-subset',
+                                                                        test_size=args.test_size,
+                                                                        batch_size=args.batch_size)
 
     # set the device to cuda if gpu is available, otherwise use cpu
     d = "cuda:0" if torch.cuda.is_available() else "cpu"
     print_and_log(f'Training with {d}')
     device = torch.device(d)
 
+    # check if model exists
     if args.model not in models:
         raise AttributeError(f'Model {args.model} unknown. ')
 
+    # setup model
     model_ft = models[args.model](pretrained=args.pretrained).to(device)
     num_ftrs = model_ft.fc.in_features
-    # Here the size of each output sample is set to 2.
-    # Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
+    # adjust ouput to correct number of features
     model_ft.fc = torch.nn.Linear(num_ftrs, len(names))
-
     model_ft = model_ft.to(device)
 
-    criterion = torch.nn.CrossEntropyLoss(weight=torch.tensor(weight,dtype=torch.float)).to(device)
+    # setup criterion with class weighting
+    criterion = torch.nn.CrossEntropyLoss(weight=torch.tensor(weight, dtype=torch.float)).to(device)
 
     # Observe that all parameters are being optimized
     optimizer_ft = torch.optim.Adam(model_ft.parameters(), lr=args.lr)
 
+    # setup learning rate scheduler
     exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer_ft, step_size=args.stepsize, gamma=0.001)
 
     # load previous model from checkpoint if path is given
     train_hist, val_hist, loss_hist = [], [], []
     start_epoch = 0
-    if args.load_model_path:
+    if args.model_load_path:
         print_and_log(f'Loading model from {args.load_model_path}')
         checkpoint = torch.load(args.load_model_path)
         model_ft.load_state_dict(checkpoint['model_state_dict'])
@@ -205,22 +185,27 @@ def main():
         train_hist = checkpoint['train_hist']
         val_hist = checkpoint['val_hist']
 
-    # set model save name to current time
-    model_save_name = time.strftime("%Y%m%d%H%M%S") + args.model
-
     mask = None
     if args.sparse:
-        decay = CosineDecay(args.death_rate, len(dataloaders['train']) * (args.epochs))
+        # setup decay
+        decay = CosineDecay(args.death_rate, len(train_batches) * args.epochs)
+        # create mask
         mask = Masking(optimizer_ft, death_rate=args.death_rate, death_mode=args.death, death_rate_decay=decay,
                        growth_mode=args.growth,
                        redistribution_mode=args.redistribution, args=args)
         mask.add_module(model_ft, sparse_init=args.sparse_init, density=args.density)
 
-    best_model = train_model(args, device, model_ft, criterion, optimizer_ft, exp_lr_scheduler,
-                                                  dataloaders,
-                                                  args.model_save_path, args.result_save_path, model_save_name,
-                                                  args.epochs, start_epoch, train_hist, val_hist,
-                                                  loss_hist, mask)
+    if args.train:
+        model_ft = train_model(args, device, model_ft, criterion, optimizer_ft, exp_lr_scheduler, train_batches,
+                               val_batches, args.epochs, start_epoch, model_checkpointer, result_checkpointer,
+                               mask)
+        result_checkpointer.save()
+    if args.test:
+        test_loss, test_acc, all_preds, all_labels = do_epoch('test', test_batches, model_ft, criterion, optimizer_ft, exp_lr_scheduler,
+                                       mask, device)
+        result_checkpointer.add_singular('all_preds', all_preds)
+        result_checkpointer.add_singular('all_labels', all_labels)
+        result_checkpointer.save()
 
 
 if __name__ == '__main__':

@@ -75,36 +75,6 @@ def load_data_from_folder(root_dir):
     return dataset
 
 
-def augment(dataset):
-    # First Aug
-    print_and_log("Augmentating 1...")
-    aug_dataset1 = []
-    first_transform = torchvision.transforms.RandomVerticalFlip(p=1)
-
-    for i in range(0, len(dataset)):
-        if i % 500 == 0:
-            print_and_log(f'{i}/{len(dataset)}')
-        transf_img = first_transform(dataset[i][0])
-        transf_tuple = (transf_img, dataset[i][1])
-        aug_dataset1.append(transf_tuple)
-
-    # Second Aug
-    print_and_log("Augmentating 2...")
-    aug_dataset2 = []
-    second_transform = torchvision.transforms.RandomHorizontalFlip(p=0.5)
-
-    for i in range(0, len(dataset)):
-        if i % 500 == 0:
-            print_and_log(f'{i}/{len(dataset)}')
-        transf_img = second_transform(dataset[i][0])
-        transf_tuple = (transf_img, dataset[i][1])
-        aug_dataset2.append(transf_tuple)
-
-    dataset = torch.utils.data.ConcatDataset([dataset, aug_dataset1])
-    dataset = torch.utils.data.ConcatDataset([dataset, aug_dataset2])
-    return dataset
-
-
 def remove_corrupted_images(dataset):
     mask = np.ones(len(dataset), dtype=bool)
     images_to_remove = []

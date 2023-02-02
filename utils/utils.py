@@ -35,7 +35,7 @@ def setup_logger(args):
     args_copy.log_interval = 1
     args_copy.seed = 0
 
-    Path('logs/').mkdir(parents=True, exist_ok=True)
+    Path('../logs/').mkdir(parents=True, exist_ok=True)
     log_path = f'logs/{time.strftime("%Y%m%d%H%M%S")}'
 
     logger.setLevel(logging.INFO)

@@ -8,8 +8,7 @@ from skimage.filters import gaussian
 from skimage.transform import rotate, warp
 from skimage.util import random_noise
 
-import dataloader
-from utils import setup_logger, print_and_log
+from utils import dataloader
 
 
 def image_augmentation(dataset):
