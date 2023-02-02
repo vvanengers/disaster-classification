@@ -56,6 +56,7 @@ def train_model(args, device, model, criterion, optimizer, scheduler, train_data
     print_and_log(f'Best val Acc: {best_acc:4f}')
 
     # load best model weights
+    model_checkpointer.add_singular('model_state_dict', model.state_dict())
     model.load_state_dict(best_model_wts)
     return model
 
