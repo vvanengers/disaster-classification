@@ -87,8 +87,9 @@ def do_epoch(phase, dataloader, model, criterion, optimizer, scheduler, mask, de
         # track history if only in train
         with torch.set_grad_enabled(phase == 'train'):
             # layer freezing
-            for param in model.parameters()[:-layer_unfreeze_count if layer_unfreeze_count > 0 else None]:
-                param.requires_grad = False
+            for layer in [model.layer1, model.layer2]:
+                for param in layer.parameters():
+                    param.requires_grad = False
             outputs = model(inputs)
             _, preds = torch.max(outputs, 1)
             loss = criterion(outputs, labels)
