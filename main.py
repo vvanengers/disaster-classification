@@ -66,6 +66,7 @@ def train_model(args, device, model, criterion, optimizer, scheduler, train_data
 
 
 def do_epoch(phase, dataloader, model, criterion, optimizer, scheduler, mask, device, layer_unfreeze_count=99):
+    print_and_log(f'Start {phase} phase')
     if phase == 'train':
         model.train()  # Set model to training mode
     else:
@@ -105,12 +106,10 @@ def do_epoch(phase, dataloader, model, criterion, optimizer, scheduler, mask, de
         # statistics
         running_loss += loss.item() * inputs.size(0)
         running_corrects += torch.sum(preds == labels.data)
-        print_and_log(f'Running corrects added: {running_corrects}')
         all_preds += preds
         all_labels += labels.data
     if phase == 'train':
         scheduler.step()
-    print_and_log(f'Total correct: {running_corrects}, Dataloader length: {len(all_preds)}')
     epoch_loss = running_loss / len(all_preds)
     epoch_acc = running_corrects.double() / len(all_preds)
     print_and_log(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
