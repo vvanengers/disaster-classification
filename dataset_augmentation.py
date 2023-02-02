@@ -27,9 +27,9 @@ def image_augmentation(dataset, start):
     tform = skimage.transform.ProjectiveTransform(matrix=matrix)
     transformations = {
         'rotate': lambda image: rotate(image, angle=random.randint(0, 360), mode='constant'),
-        'wrapshift': lambda image: warp(image, tform.inverse),
+        # 'wrapshift': lambda image: warp(image, tform.inverse),
         'fliplr': lambda image: np.fliplr(image),
-        'flipud': lambda image: np.flipud(image),
+        # 'flipud': lambda image: np.flipud(image),
         'noisyrandom': lambda image: random_noise(image, var=0.5 ** (random.randint(3, 6))),
         'gaussian': lambda image: gaussian(image, sigma=(random.randint(0, 5) * 2 + 1), multichannel=True)
     }
