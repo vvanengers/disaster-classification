@@ -57,7 +57,7 @@ def train_model(args, device, model, criterion, optimizer, scheduler, train_data
 
     # get time
     time_elapsed = time.time() - since
-    print_and_log(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s')
+    print_and_log(f'Training completed in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s')
     print_and_log(f'Best val Acc: {best_acc:4f}')
 
     # load best model weights
