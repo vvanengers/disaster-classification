@@ -105,10 +105,12 @@ def do_epoch(phase, dataloader, model, criterion, optimizer, scheduler, mask, de
         # statistics
         running_loss += loss.item() * inputs.size(0)
         running_corrects += torch.sum(preds == labels.data)
+        print_and_log(f'Running corrects added: {running_corrects}')
         all_preds += preds
         all_labels += labels.data
     if phase == 'train':
         scheduler.step()
+    print_and_log(f'Total correct: {running_corrects}, Dataloader length: {len(dataloader)}')
     epoch_loss = running_loss / len(dataloader)
     epoch_acc = running_corrects.double() / len(dataloader)
     print_and_log(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
