@@ -1,6 +1,6 @@
 import torch
 
-import utils
+from utils import other
 
 
 class Checkpointer:
@@ -25,7 +25,7 @@ class Checkpointer:
             self.save()
 
     def save(self):
-        utils.save(self.store, self.store_path, self.store_name, overwrite=self.overwrite)
+        other.save(self.store, self.store_path, self.store_name, overwrite=self.overwrite)
 
     def load(self, path):
         self.store = torch.load(path)

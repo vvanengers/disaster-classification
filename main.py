@@ -10,7 +10,7 @@ import sparselearning
 from utils.checkpointer import Checkpointer
 from utils.dataloader import load_data
 from sparselearning.core import CosineDecay, Masking
-from utils.utils import print_and_log, setup_logger
+from utils.other import print_and_log, setup_logger
 
 models = {
     'resnet50': tmodels.resnet50,
