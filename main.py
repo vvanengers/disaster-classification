@@ -170,7 +170,8 @@ def main():
     model_ft = model_ft.to(device)
 
     # setup criterion with class weighting
-    criterion = torch.nn.CrossEntropyLoss(weight=torch.tensor(weight, dtype=torch.float)).to(device)
+    # criterion = torch.nn.CrossEntropyLoss(weight=torch.tensor(weight, dtype=torch.float)).to(device)
+    criterion = torch.nn.CrossEntropyLoss()
 
     # Observe that all parameters are being optimized
     optimizer_ft = torch.optim.Adam(model_ft.parameters(), lr=args.lr)

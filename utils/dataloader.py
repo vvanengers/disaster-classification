@@ -11,46 +11,31 @@ from torchvision import transforms, datasets
 def load_data(root_dir='./data/Incidents-subset', val_size=0.05, test_size=0.05, batch_size=64, seed=42):
     dataset = load_data_from_folder(root_dir)
 
-    # Shuffle dataset
-    s_ind = (list(range(len(dataset))))
-    np.random.shuffle(s_ind)
-    dataset.imgs = torch.tensor(np.array(dataset.imgs)[s_ind])
-    dataset.targets = torch.tensor(np.array(dataset.targets)[s_ind])
-    dataset.samples = torch.tensor(np.array(dataset.samples)[s_ind])
 
-    dataset_size = len(dataset)
-    indices = list(range(dataset_size))
+    dsz = len(dataset)
 
-    split1 = int(dataset_size * (1 - (val_size + test_size)))
-    split2 = int(dataset_size * test_size) + split1
+    num_train = int(dsz*(1-(val_size + test_size)))
+    num_val = int(dsz*val_size)
+    num_test = dsz - (num_train + num_val)
+
+    train_dataset, val_dataset, test_dataset = random_split(dataset, [num_train, num_val, num_test],
+                                                            generator=torch.Generator().manual_seed(42))
+
+    targets = [c for _, c in train_dataset]
 
 
-    train_indices = indices[:split1]
-    val_indices = indices[split1:split2]
-    test_indices = indices[split2:]
-
-    train_data_set = copy.deepcopy(dataset)
-    train_data_set.imgs = train_data_set.imgs[:split1]
-    train_data_set.targets = train_data_set.targets[:split1]
-
-    # generate subset based on indices
-    val_split = Subset(dataset, val_indices)
-    test_split = Subset(dataset, test_indices)
 
     # rest for testing
-    labels = np.unique(dataset.targets)
-    _, sample_dist = np.unique(train_data_set.targets, return_counts=True)
-    weight = 1/(sample_dist / np.sum(sample_dist))
-    samples_weight = weight[train_data_set.targets]
+    labels, class_counts = np.unique(targets, return_counts=True)
+    weight = 1 / torch.tensor(class_counts).float()
+    samples_weight = weight[targets]
 
-    samples_weight = torch.from_numpy(samples_weight)
-    samples_weight = samples_weight.double()
-    sampler = WeightedRandomSampler(samples_weight, len(train_data_set))
+    sampler = WeightedRandomSampler(samples_weight, len(train_dataset))
 
     # create batches
-    train_batches = DataLoader(train_data_set, batch_size=batch_size, sampler=sampler)
-    val_batches = DataLoader(val_split, batch_size=batch_size)
-    test_batches = DataLoader(test_split, batch_size=batch_size)
+    train_batches = DataLoader(train_dataset, batch_size=batch_size, sampler=sampler)
+    val_batches = DataLoader(val_dataset, batch_size=batch_size)
+    test_batches = DataLoader(test_dataset, batch_size=batch_size)
     # return sample_dist for adjusting the loss value based on the image counts
 
     index_to_names = {i: name for i, name in enumerate(dataset.classes)}
