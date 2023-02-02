@@ -42,11 +42,14 @@ def image_augmentation(dataset):
         if index % 500 == 0:
             print(f'{index}/{dataset_size}')
         path = dataset.imgs[index][0]
-        image = io.imread(path)
-        io.imshow(image)
-        for name, transformation in transformations.items():
-            new_path = add_string_before_filetype(path, '_' + name)
-            io.imsave(add_string_before_filetype(new_path, name), transformation(image))
+        try:
+            image = io.imread(path)
+            for name, transformation in transformations.items():
+                new_path = add_string_before_filetype(path, '_' + name)
+                io.imsave(add_string_before_filetype(new_path, name), transformation(image))
+        except ValueError as e:
+            print('Skipping:')
+            print(e)
 
 
 if __name__ == '__main__':
