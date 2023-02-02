@@ -11,7 +11,7 @@ from skimage.util import random_noise
 from utils import dataloader
 
 
-def image_augmentation(dataset):
+def image_augmentation(dataset, start):
     def find_last(lst, sought_elt):
         for r_idx, elt in enumerate(reversed(lst)):
             if elt == sought_elt:
@@ -37,7 +37,7 @@ def image_augmentation(dataset):
     # setup_logger('')
     print('Start augmenting dataset')
     dataset_size = len(dataset)
-    for index in range(dataset_size):
+    for index in np.arange(start, dataset_size,1):
         if index % 500 == 0:
             print(f'{index}/{dataset_size}')
         path = dataset.imgs[index][0]
@@ -46,7 +46,7 @@ def image_augmentation(dataset):
             for name, transformation in transformations.items():
                 new_path = add_string_before_filetype(path, '_' + name)
                 io.imsave(add_string_before_filetype(new_path, name), transformation(image))
-        except ValueError as e:
+        except Exception as e:
             print('Skipping:')
             print(e)
 
@@ -54,6 +54,7 @@ def image_augmentation(dataset):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Image augmentation')
     parser.add_argument('--path', type=str, default=None, help='Image folder path')
+    parser.add_argument('--start_index', type=int, default=0, help='From which item to start')
     args = parser.parse_args()
     dataset = dataloader.load_data_from_folder(args.path)
-    image_augmentation(dataset)
+    image_augmentation(dataset, args.start_index)
