@@ -117,7 +117,7 @@ def remove_corrupted_images(dataset):
         except (IOError, SyntaxError) as e:
             # If there is an error opening the image, it is likely corrupted
             # Remove it from the dataset
-            print_and_log(f"Corrupted image: {image_path}")
+            print(f"Corrupted image: {image_path}")
             mask[i] = False
             images_to_remove.append((image_path, c))
     for x in images_to_remove:
