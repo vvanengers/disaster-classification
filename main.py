@@ -20,7 +20,7 @@ models = {
 
 
 def train_model(args, device, model, criterion, optimizer, scheduler, train_data_loader, val_data_loader, num_epochs,
-                start_epoch, model_checkpointer, result_checkpointer, mask=None, layer_freeze_count=None):
+                start_epoch, model_checkpointer, result_checkpointer, mask=None, layer_unfreeze_count=99):
     # start timer
     since = time.time()
 
@@ -38,13 +38,13 @@ def train_model(args, device, model, criterion, optimizer, scheduler, train_data
 
         # training phase
         train_loss, train_acc, _, __ = do_epoch('train', train_data_loader, model, criterion, optimizer, scheduler,
-                                                mask, device)
+                                                mask, device, layer_unfreeze_count=layer_unfreeze_count)
         result_checkpointer.add_in_list('train_loss', [epoch, train_loss])
         result_checkpointer.add_in_list('train_acc', [epoch, train_acc])
 
         # validation phase
         val_loss, val_acc, _, __ = do_epoch('val', val_data_loader, model, criterion, optimizer, scheduler, mask,
-                                            device)
+                                            device,layer_unfreeze_count=layer_unfreeze_count)
         result_checkpointer.add_in_list('val_loss', [epoch, val_loss])
         result_checkpointer.add_in_list('val_acc', [epoch, val_acc])
 
@@ -65,7 +65,7 @@ def train_model(args, device, model, criterion, optimizer, scheduler, train_data
     return model
 
 
-def do_epoch(phase, dataloader, model, criterion, optimizer, scheduler, mask, device, layer_freeze_count=None):
+def do_epoch(phase, dataloader, model, criterion, optimizer, scheduler, mask, device, layer_unfreeze_count=99):
     if phase == 'train':
         model.train()  # Set model to training mode
     else:
@@ -87,7 +87,7 @@ def do_epoch(phase, dataloader, model, criterion, optimizer, scheduler, mask, de
         # track history if only in train
         with torch.set_grad_enabled(phase == 'train'):
             # layer freezing
-            for param in model.parameters()[:-layer_freeze_count if layer_freeze_count > 0 else None]:
+            for param in model.parameters()[:-layer_unfreeze_count if layer_unfreeze_count > 0 else None]:
                 param.requires_grad = False
             outputs = model(inputs)
             _, preds = torch.max(outputs, 1)
@@ -121,7 +121,7 @@ def main():
     parser.add_argument('--val_size', type=float, default=0.05, help='Validation size in train-val-test split.')
     parser.add_argument('--test_size', type=float, default=0.05, help='Test size in train-val-test split.')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size of training and testing data.')
-    parser.add_argument('--layer_freeze_count', type=int, default=99, help='Number of layers to unfreeze')
+    parser.add_argument('--layer_unfreeze_count', type=int, default=99, help='Number of layers to unfreeze')
     parser.add_argument('--train', action='store_true', default=True)
     parser.add_argument('--test', action='store_true', default=True)
     parser.add_argument('--pretrained', action='store_true', default=True)
@@ -203,7 +203,7 @@ def main():
     if args.train:
         model_ft = train_model(args, device, model_ft, criterion, optimizer_ft, exp_lr_scheduler, train_batches,
                                val_batches, args.epochs, start_epoch, model_checkpointer, result_checkpointer,
-                               mask)
+                               mask, layer_unfreeze_count=args.layer_unfreeze_count)
         result_checkpointer.save()
     if args.test:
         test_loss, test_acc, all_preds, all_labels = do_epoch('test', test_batches, model_ft, criterion, optimizer_ft, exp_lr_scheduler,
