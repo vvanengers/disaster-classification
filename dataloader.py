@@ -10,20 +10,7 @@ from utils import print_and_log
 
 
 def load_data(root_dir='./data/Incidents-subset', val_size=0.05, test_size=0.05, batch_size=64, seed=42):
-    print_and_log('Start data loading')
-    # Define the transforms to apply to your images
-    # In this example, we resize the images to 256x256 and normalize them
-    transform = transforms.Compose([
-        transforms.Resize((256, 256)),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
-
-    # Use the ImageFolder class to load the images from your root directory
-    dataset = datasets.ImageFolder(root_dir, transform=transform)
-    remove_corrupted_images(dataset)
-    dataset = augment(dataset)
+    dataset = load_data_from_folder(root_dir)
 
     # Shuffle dataset
     s_ind = (list(range(len(dataset))))
@@ -70,6 +57,22 @@ def load_data(root_dir='./data/Incidents-subset', val_size=0.05, test_size=0.05,
     names = [index_to_names[label] for label in labels]
 
     return train_batches, val_batches, test_batches, names, weight
+
+
+def load_data_from_folder(root_dir):
+    print_and_log('Start data loading')
+    # Define the transforms to apply to your images
+    # In this example, we resize the images to 256x256 and normalize them
+    transform = transforms.Compose([
+        transforms.Resize((256, 256)),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+    # Use the ImageFolder class to load the images from your root directory
+    dataset = datasets.ImageFolder(root_dir, transform=transform)
+    remove_corrupted_images(dataset)
+    return dataset
 
 
 def augment(dataset):
