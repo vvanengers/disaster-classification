@@ -6,7 +6,6 @@ import torchvision
 from PIL import Image
 from torch.utils.data import Subset, DataLoader, WeightedRandomSampler, random_split
 from torchvision import transforms, datasets
-from utils import print_and_log
 
 
 def load_data(root_dir='./data/Incidents-subset', val_size=0.05, test_size=0.05, batch_size=64, seed=42):

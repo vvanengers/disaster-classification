@@ -31,7 +31,7 @@ def train_model(args, device, model, criterion, optimizer, scheduler, train_data
 
     for epoch in np.arange(start_epoch, num_epochs, 1):
         print_and_log(f'Epoch {epoch}/{num_epochs - 1}')
-        print_and_log(f'Learning rate: {scheduler.get_lr()}')
+        print_and_log(f'Learning rate: {scheduler.get_last_lr()}')
         print_and_log('-' * 10)
 
         # Each epoch has a training and validation phase
@@ -129,6 +129,8 @@ def main():
     parser.add_argument('--model_load_path', type=str, default=None, help='Path to model to load. No model is loaded'
                                                                           'if value is None')
     parser.add_argument('--result_save_path', type=str, default='results/', help='Where to save the results.')
+    parser.add_argument('--dataset_path', type=str, default='data/Incidents-subset',
+                        help='Where to load the dataset from')
 
     sparselearning.core.add_sparse_args(parser)
     args = parser.parse_args()
@@ -139,11 +141,11 @@ def main():
     # setup checkpointing
     # set save name to current time
     save_name = time.strftime("%Y%m%d%H%M%S") + args.model
-    model_checkpointer = Checkpointer(args.model_save_path, args, autosave=False)
+    model_checkpointer = Checkpointer(args.model_save_path, save_name, args, autosave=False)
     result_checkpointer = Checkpointer(args.result_save_path, save_name, args, autosave=False)
 
     # get dataset
-    train_batches, val_batches, test_batches, names, weight = load_data('data/Incidents-subset',
+    train_batches, val_batches, test_batches, names, weight = load_data(args.dataset_path,
                                                                         test_size=args.test_size,
                                                                         batch_size=args.batch_size)
 
