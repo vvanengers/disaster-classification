@@ -9,6 +9,12 @@ from pathlib import Path
 logger = None
 
 
+def set_parameter_requires_grad(model, feature_extracting):
+    if feature_extracting:
+        for param in model.parameters():
+            param.requires_grad = False
+
+
 def save(obj, path, name, overwrite=True):
     Path(path).mkdir(parents=True, exist_ok=True)
     if not((not overwrite) & os.path.isfile(path+name)):

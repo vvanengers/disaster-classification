@@ -10,13 +10,8 @@ import sparselearning
 from utils.checkpointer import Checkpointer
 from utils.dataloader import load_data
 from sparselearning.core import CosineDecay, Masking
+from utils.models import initialize_model
 from utils.other import print_and_log, setup_logger
-
-models = {
-    'resnet50': tmodels.resnet50,
-    'resnet34': tmodels.resnet34,
-    'resnet18': tmodels.resnet18
-}
 
 
 def train_model(args, device, model, criterion, optimizer, scheduler, train_data_loader, val_data_loader, num_epochs,
@@ -88,9 +83,9 @@ def do_epoch(phase, dataloader, model, criterion, optimizer, scheduler, mask, de
         # track history if only in train
         with torch.set_grad_enabled(phase == 'train'):
             # layer freezing
-            for layer in [model.layer1, model.layer2]:
-                for param in layer.parameters():
-                    param.requires_grad = False
+            # for layer in [model.layer1, model.layer2]:
+            #     for param in layer.parameters():
+            #         param.requires_grad = False
             outputs = model(inputs)
             _, preds = torch.max(outputs, 1)
             loss = criterion(outputs, labels)
@@ -124,6 +119,7 @@ def main():
     parser.add_argument('--test_size', type=float, default=0.05, help='Test size in train-val-test split.')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size of training and testing data.')
     parser.add_argument('--layer_unfreeze_count', type=int, default=99, help='Number of layers to unfreeze')
+    parser.add_argument('--feature_extract', action='store_true', default=True)
     parser.add_argument('--train', action='store_true', default=True)
     parser.add_argument('--test', action='store_true', default=True)
     parser.add_argument('--pretrained', action='store_true', default=True)
@@ -160,23 +156,37 @@ def main():
     print_and_log(f'Training with {d}')
     device = torch.device(d)
 
-    # check if model exists
-    if args.model not in models:
-        raise AttributeError(f'Model {args.model} unknown. ')
-
     # setup model
-    model_ft = models[args.model](pretrained=args.pretrained).to(device)
-    num_ftrs = model_ft.fc.in_features
-    # adjust ouput to correct number of features
-    model_ft.fc = torch.nn.Linear(num_ftrs, len(names))
-    model_ft = model_ft.to(device)
+    num_classes = len(names)
+    model = initialize_model(args.model, num_classes, args.feature_extract, args.pretrained)
+
+    # Send the model to GPU
+    model = model.to(device)
+
+    # Gather the parameters to be optimized/updated in this run. If we are
+    #  finetuning we will be updating all parameters. However, if we are
+    #  doing feature extract method, we will only update the parameters
+    #  that we have just initialized, i.e. the parameters with requires_grad
+    #  is True.
+    params_to_update = model.parameters()
+    print("Params to learn:")
+    if args.feature_extract:
+        params_to_update = []
+        for name, param in model.named_parameters():
+            if param.requires_grad == True:
+                params_to_update.append(param)
+                print("\t", name)
+    else:
+        for name, param in model.named_parameters():
+            if param.requires_grad == True:
+                print("\t", name)
 
     # setup criterion with class weighting
     # criterion = torch.nn.CrossEntropyLoss(weight=torch.tensor(weight, dtype=torch.float)).to(device)
     criterion = torch.nn.CrossEntropyLoss()
 
     # Observe that all parameters are being optimized
-    optimizer_ft = torch.optim.Adam(model_ft.parameters(), lr=args.lr)
+    optimizer_ft = torch.optim.Adam(params_to_update, lr=args.lr)
 
     # setup learning rate scheduler
     exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer_ft, step_size=args.stepsize, gamma=args.gamma)
@@ -187,7 +197,7 @@ def main():
     if args.model_load_path:
         print_and_log(f'Loading model from {args.load_model_path}')
         checkpoint = torch.load(args.load_model_path)
-        model_ft.load_state_dict(checkpoint['model_state_dict'])
+        model.load_state_dict(checkpoint['model_state_dict'])
         optimizer_ft.load_state_dict(checkpoint['optimizer_state_dict'])
         start_epoch = checkpoint['epoch']
         loss_hist = checkpoint['loss_hist']
@@ -202,15 +212,16 @@ def main():
         mask = Masking(optimizer_ft, death_rate=args.death_rate, death_mode=args.death, death_rate_decay=decay,
                        growth_mode=args.growth,
                        redistribution_mode=args.redistribution, args=args)
-        mask.add_module(model_ft, sparse_init=args.sparse_init, density=args.density)
+        mask.add_module(model, sparse_init=args.sparse_init, density=args.density)
 
     if args.train:
-        model_ft = train_model(args, device, model_ft, criterion, optimizer_ft, exp_lr_scheduler, train_batches,
+        model = train_model(args, device, model, criterion, optimizer_ft, exp_lr_scheduler, train_batches,
                                val_batches, args.epochs, start_epoch, model_checkpointer, result_checkpointer,
                                mask, layer_unfreeze_count=args.layer_unfreeze_count)
         result_checkpointer.save()
+        model_checkpointer.save()
     if args.test:
-        test_loss, test_acc, all_preds, all_labels = do_epoch('test', test_batches, model_ft, criterion, optimizer_ft, exp_lr_scheduler,
+        test_loss, test_acc, all_preds, all_labels = do_epoch('test', test_batches, model, criterion, optimizer_ft, exp_lr_scheduler,
                                        mask, device)
         result_checkpointer.add_singular('all_preds', all_preds)
         result_checkpointer.add_singular('all_labels', all_labels)
