@@ -131,6 +131,7 @@ def main():
     parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate.')
     parser.add_argument('--momentum', type=float, default=0.9, help='Momentum.')
     parser.add_argument('--stepsize', type=int, default=10, help='Stepsize.')
+    parser.add_argument('--gamma', type=float, default=0.5, help='Reduction of lr.')
     parser.add_argument('--model_save_path', type=str, default='models/', help='Where to save the models.')
     parser.add_argument('--model_load_path', type=str, default=None, help='Path to model to load. No model is loaded'
                                                                           'if value is None')
@@ -178,7 +179,7 @@ def main():
     optimizer_ft = torch.optim.Adam(model_ft.parameters(), lr=args.lr)
 
     # setup learning rate scheduler
-    exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer_ft, step_size=args.stepsize, gamma=0.001)
+    exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer_ft, step_size=args.stepsize, gamma=args.gamma)
 
     # load previous model from checkpoint if path is given
     train_hist, val_hist, loss_hist = [], [], []
