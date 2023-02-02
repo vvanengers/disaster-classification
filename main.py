@@ -158,7 +158,7 @@ def main():
 
     # setup model
     num_classes = len(names)
-    model = initialize_model(args.model, num_classes, args.feature_extract, args.pretrained)
+    model, input_size = initialize_model(args.model, num_classes, args.feature_extract, args.pretrained)
 
     # Send the model to GPU
     model = model.to(device)
