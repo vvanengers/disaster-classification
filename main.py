@@ -32,13 +32,13 @@ def train_model(args, device, model, criterion, optimizer, scheduler, train_data
         # Each epoch has a training and validation phase
 
         # training phase
-        train_loss, train_acc, _, __ = do_epoch('train', train_data_loader, model, criterion, optimizer, scheduler,
+        train_loss, train_acc, _, __, ___ = do_epoch('train', train_data_loader, model, criterion, optimizer, scheduler,
                                                 mask, device, layer_unfreeze_count=layer_unfreeze_count)
         result_checkpointer.add_in_list('train_loss', [epoch, train_loss])
         result_checkpointer.add_in_list('train_acc', [epoch, train_acc])
 
         # validation phase
-        val_loss, val_acc, _, __ = do_epoch('val', val_data_loader, model, criterion, optimizer, scheduler, mask,
+        val_loss, val_acc, _, __, ___ = do_epoch('val', val_data_loader, model, criterion, optimizer, scheduler, mask,
                                             device,layer_unfreeze_count=layer_unfreeze_count)
         result_checkpointer.add_in_list('val_loss', [epoch, val_loss])
         result_checkpointer.add_in_list('val_acc', [epoch, val_acc])
@@ -71,9 +71,10 @@ def do_epoch(phase, dataloader, model, criterion, optimizer, scheduler, mask, de
     running_corrects = 0
     all_preds = []
     all_labels = []
+    all_paths = []
 
     # Iterate over data.
-    for i, (inputs, labels) in enumerate(dataloader):
+    for i, (inputs, labels, paths) in enumerate(dataloader):
         inputs = inputs.to(device)
         labels = labels.to(device)
 
@@ -104,13 +105,14 @@ def do_epoch(phase, dataloader, model, criterion, optimizer, scheduler, mask, de
         running_corrects += torch.sum(preds == labels.data)
         all_preds += preds
         all_labels += labels.data
+        all_paths += paths
     if phase == 'train':
         scheduler.step()
     epoch_loss = running_loss / len(all_preds)
     epoch_acc = running_corrects.double() / len(all_preds)
     print_and_log(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
 
-    return epoch_loss, epoch_acc, all_preds, all_labels
+    return epoch_loss, epoch_acc, all_preds, all_labels, all_paths
 
 
 def main():
@@ -222,10 +224,11 @@ def main():
         result_checkpointer.save()
         model_checkpointer.save()
     if args.test:
-        test_loss, test_acc, all_preds, all_labels = do_epoch('test', test_batches, model, criterion, optimizer_ft, exp_lr_scheduler,
+        test_loss, test_acc, all_preds, all_labels, all_paths = do_epoch('test', test_batches, model, criterion, optimizer_ft, exp_lr_scheduler,
                                        mask, device)
         result_checkpointer.add_singular('all_preds', all_preds)
         result_checkpointer.add_singular('all_labels', all_labels)
+        result_checkpointer.add_singular('all_paths', all_paths)
         result_checkpointer.save()
 
 

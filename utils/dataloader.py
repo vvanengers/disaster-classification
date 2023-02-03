@@ -8,6 +8,15 @@ from torch.utils.data import Subset, DataLoader, WeightedRandomSampler, random_s
 from torchvision import transforms, datasets
 
 
+class ImageFolderWithPaths(datasets.ImageFolder):
+
+    def __getitem__(self, index):
+        img, label = super(ImageFolderWithPaths, self).__getitem__(index)
+
+        path = self.imgs[index][0]
+        return img, label, path
+
+
 def load_data(root_dir='./data/Incidents-subset', val_size=0.05, test_size=0.05, batch_size=64, seed=42):
     dataset = load_data_from_folder(root_dir)
 
@@ -21,7 +30,7 @@ def load_data(root_dir='./data/Incidents-subset', val_size=0.05, test_size=0.05,
     train_dataset, val_dataset, test_dataset = random_split(dataset, [num_train, num_val, num_test],
                                                             generator=torch.Generator().manual_seed(42))
 
-    targets = [c for _, c in train_dataset]
+    targets = [c for _, c, __ in train_dataset]
 
 
 
@@ -55,7 +64,7 @@ def load_data_from_folder(root_dir):
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
     # Use the ImageFolder class to load the images from your root directory
-    dataset = datasets.ImageFolder(root_dir, transform=transform)
+    dataset = ImageFolderWithPaths(root_dir, transform=transform)
     remove_corrupted_images(dataset)
     return dataset
 
