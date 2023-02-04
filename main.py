@@ -26,6 +26,9 @@ def train_model(args, device, model, criterion, optimizer, scheduler, train_data
     best_model_wts = copy.deepcopy(model.state_dict())
     # best accuracy baseline
     best_acc = 0.0
+    best_preds = []
+    best_labels = []
+    best_paths = []
     hist = {'train_loss': [], 'train_acc': [], 'val_loss': [], 'val_acc': []}
 
     for epoch in np.arange(start_epoch, num_epochs, 1):
@@ -42,7 +45,7 @@ def train_model(args, device, model, criterion, optimizer, scheduler, train_data
         hist['train_acc'].append(train_acc)
 
         # validation phase
-        val_loss, val_acc, _, __, ___ = do_epoch('val', val_data_loader, model, criterion, optimizer, scheduler, mask,
+        val_loss, val_acc, val_preds, val_labels, val_paths = do_epoch('val', val_data_loader, model, criterion, optimizer, scheduler, mask,
                                             device,layer_unfreeze_count=layer_unfreeze_count)
         hist['val_loss'].append(val_loss)
         hist['val_acc'].append(val_acc)
@@ -51,6 +54,9 @@ def train_model(args, device, model, criterion, optimizer, scheduler, train_data
         if val_acc > best_acc:
             best_acc = val_acc
             best_model_wts = copy.deepcopy(model.state_dict())
+            best_preds = val_preds
+            best_labels = val_labels
+            best_paths = val_paths
 
     # get time
     time_elapsed = time.time() - since
@@ -59,7 +65,7 @@ def train_model(args, device, model, criterion, optimizer, scheduler, train_data
 
     # load best model weights
     model.load_state_dict(best_model_wts)
-    return model, best_model_wts, best_acc, hist
+    return model, best_model_wts, best_acc, best_preds, best_labels, best_paths, hist
 
 
 def do_epoch(phase, dataloader, model, criterion, optimizer, scheduler, mask, device, layer_unfreeze_count=99):
@@ -236,7 +242,7 @@ def main():
             print_and_log(f'Started training fold {k}')
             model.load_state_dict(orig_model_state_dict)
             optimizer_ft.load_state_dict(orig_optmizer_state_dict)
-            _, best_model_wts, best_acc, hist = train_model(args, device, model, criterion, optimizer_ft,
+            _, best_model_wts, best_acc, best_preds, best_labels, best_paths, hist = train_model(args, device, model, criterion, optimizer_ft,
                                                                 exp_lr_scheduler, train_loader,valid_loader,
                                                                 args.epochs, start_epoch, model_checkpointer,
                                                                 result_checkpointer, mask,
@@ -246,6 +252,9 @@ def main():
                 folded_best_model_wts = best_model_wts
             result_checkpointer.add_in_list('folded_hist',  hist)
             result_checkpointer.add_in_list('folded_best_acc', best_acc)
+            result_checkpointer.add_in_list('folded_best_preds', best_preds)
+            result_checkpointer.add_in_list('folded_best_labels', best_labels)
+            result_checkpointer.add_in_list('folded_best_paths', best_paths)
         model_checkpointer.add_singular('folded_best_model_wts', folded_best_model_wts)
         result_checkpointer.save()
         model_checkpointer.save()
