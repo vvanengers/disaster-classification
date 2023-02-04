@@ -229,7 +229,7 @@ def main():
     if args.train:
         folded_best_acc = 0
         folded_best_model_wts = None
-        folded_data_loaders = load_folded_dataloaders(args.dataset_path, k_folds=args.k_folds)
+        folded_data_loaders = load_folded_dataloaders(dataset, k_folds=args.k_folds)
         for train_loader, valid_loader in folded_data_loaders:
             model, best_model_wts, best_acc, hist = train_model(args, device, model, criterion, optimizer_ft,
                                                                 exp_lr_scheduler, train_loader,valid_loader,

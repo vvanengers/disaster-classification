@@ -17,9 +17,7 @@ class ImageFolderWithPaths(datasets.ImageFolder):
         return img, label, path
 
 
-def load_folded_dataloaders(root_dir='./data/Incidents-subset', k_folds=5, batch_size=64, seed=42):
-    dataset = load_data_from_folder(root_dir)
-
+def load_folded_dataloaders(dataset, k_folds=5, batch_size=64, seed=42):
     l = len(dataset)
     fold_size = int(l / k_folds)
     last_fold = l - (k_folds - 1) * fold_size
@@ -34,7 +32,8 @@ def load_folded_dataloaders(root_dir='./data/Incidents-subset', k_folds=5, batch
         valid_fold = dataset_folds[k]
         train_folds = torch.utils.data.ConcatDataset(train_folds)
 
-        targets = [c for _, c, __ in train_folds]
+        # targets = [c for _, c, __ in train_folds]
+        targets = np.array(dataset.targets)[[i for ds in train_folds.datasets for i in ds.indices]]
 
         # rest for testing
         labels, class_counts = np.unique(targets, return_counts=True)
