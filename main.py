@@ -226,13 +226,17 @@ def main():
 
     # kfold_data, test_data, kfold_targets, test_targets = train_test_split(dataset.imgs, dataset.targets,
     #                                                                       test_size = 0.05, random_state = 42)
+    orig_model_state_dict = model.state_dict()
+    orig_optmizer_state_dict = optimizer_ft.state_dict()
     if args.train:
         folded_best_acc = 0
         folded_best_model_wts = None
         folded_data_loaders = load_folded_dataloaders(dataset, k_folds=args.k_folds)
         for k, (train_loader, valid_loader) in enumerate(folded_data_loaders):
             print_and_log(f'Started training fold {k}')
-            model, best_model_wts, best_acc, hist = train_model(args, device, model, criterion, optimizer_ft,
+            model.load_state_dict(orig_model_state_dict)
+            optimizer_ft.load_state_dict(orig_optmizer_state_dict)
+            _, best_model_wts, best_acc, hist = train_model(args, device, model, criterion, optimizer_ft,
                                                                 exp_lr_scheduler, train_loader,valid_loader,
                                                                 args.epochs, start_epoch, model_checkpointer,
                                                                 result_checkpointer, mask,
