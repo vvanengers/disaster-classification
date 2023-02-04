@@ -17,40 +17,37 @@ class ImageFolderWithPaths(datasets.ImageFolder):
         return img, label, path
 
 
-def load_data(root_dir='./data/Incidents-subset', val_size=0.05, test_size=0.05, batch_size=64, seed=42):
+def load_folded_dataloaders(root_dir='./data/Incidents-subset', k_folds=5, batch_size=64, seed=42):
     dataset = load_data_from_folder(root_dir)
 
+    l = len(dataset)
+    fold_size = int(l / k_folds)
+    last_fold = l - (k_folds - 1) * fold_size
+    assert l == fold_size * (k_folds - 1) + last_fold
+    dataset_folds = random_split(dataset, [fold_size] * (k_folds - 1) + [last_fold],
+                                 generator=torch.Generator().manual_seed(42))
+    dataloaders = []
+    for k in range(k_folds):
+        print('Loading fold ',k)
+        # get all folds except the kth
+        train_folds = dataset_folds[:k] + dataset_folds[k:]
+        valid_fold = dataset_folds[k]
+        train_folds = torch.utils.data.ConcatDataset(train_folds)
 
-    dsz = len(dataset)
+        targets = [c for _, c, __ in train_folds]
 
-    num_train = int(dsz*(1-(val_size + test_size)))
-    num_val = int(dsz*val_size)
-    num_test = dsz - (num_train + num_val)
+        # rest for testing
+        labels, class_counts = np.unique(targets, return_counts=True)
+        weight = 1 / torch.tensor(class_counts).float()
+        samples_weight = weight[targets]
 
-    train_dataset, val_dataset, test_dataset = random_split(dataset, [num_train, num_val, num_test],
-                                                            generator=torch.Generator().manual_seed(42))
+        sampler = WeightedRandomSampler(samples_weight, len(train_folds))
 
-    targets = [c for _, c, __ in train_dataset]
-
-
-
-    # rest for testing
-    labels, class_counts = np.unique(targets, return_counts=True)
-    weight = 1 / torch.tensor(class_counts).float()
-    samples_weight = weight[targets]
-
-    sampler = WeightedRandomSampler(samples_weight, len(train_dataset))
-
-    # create batches
-    train_batches = DataLoader(train_dataset, batch_size=batch_size, sampler=sampler)
-    val_batches = DataLoader(val_dataset, batch_size=batch_size)
-    test_batches = DataLoader(test_dataset, batch_size=batch_size)
-    # return sample_dist for adjusting the loss value based on the image counts
-
-    index_to_names = {i: name for i, name in enumerate(dataset.classes)}
-    names = [index_to_names[label] for label in labels]
-
-    return train_batches, val_batches, test_batches, names, weight
+        # create batches
+        train_loader = DataLoader(train_folds, batch_size=batch_size, sampler=sampler)
+        valid_loader = DataLoader(valid_fold, batch_size=batch_size)
+        dataloaders.append((train_loader, valid_loader))
+    return dataloaders
 
 
 def load_data_from_folder(root_dir):
@@ -87,4 +84,3 @@ def remove_corrupted_images(dataset):
     for x in images_to_remove:
         dataset.imgs.remove(x)
         dataset.targets.remove(x[1])
-
