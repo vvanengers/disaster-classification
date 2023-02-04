@@ -4,6 +4,7 @@ import time
 
 import numpy as np
 import torch
+from torch.nn.functional import dropout
 from torchvision import models as tmodels
 
 import sparselearning
@@ -126,6 +127,7 @@ def main():
     parser.add_argument('--train', action='store_true', default=True)
     parser.add_argument('--test', action='store_true', default=False)
     parser.add_argument('--pretrained', action='store_true', default=True)
+    parser.add_argument('--dropout_p', type=float, default=0.5, help='Dropout rate.')
     parser.add_argument('--epochs', type=int, default=64, help='Number of training epochs.')
     parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate.')
     parser.add_argument('--momentum', type=float, default=0.9, help='Momentum.')
@@ -162,6 +164,7 @@ def main():
     # setup model
     num_classes = len(names)
     model, input_size = initialize_model(args.model, num_classes, args.feature_extract, args.pretrained)
+    model.fc.register_forward_hook(lambda m, inp, out: dropout(out, p=args.dropout_p, training=args.train))
 
     # Send the model to GPU
     model = model.to(device)
