@@ -32,7 +32,6 @@ def load_folded_dataloaders(dataset, k_folds=5, batch_size=64, seed=42):
         valid_fold = dataset_folds[k]
         train_folds = torch.utils.data.ConcatDataset(train_folds)
 
-        # targets = [c for _, c, __ in train_folds]
         targets = np.array(dataset.targets)[[i for ds in train_folds.datasets for i in ds.indices]]
 
         # rest for testing

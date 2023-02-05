@@ -8,13 +8,12 @@ import torch
 import sparselearning
 from utils.checkpointer import Checkpointer
 from utils.dataloader import load_folded_dataloaders, load_data_from_folder
-from sparselearning.core import CosineDecay, Masking
 from utils.models import initialize_model
 from utils.other import print_and_log, setup_logger
 
 
 def train_model(device, model, criterion, optimizer, scheduler, train_data_loader, val_data_loader, num_epochs,
-                start_epoch, mask=None, layer_unfreeze_count=99):
+                start_epoch):
     # start timer
     since = time.time()
 
@@ -36,15 +35,13 @@ def train_model(device, model, criterion, optimizer, scheduler, train_data_loade
 
         # training phase
         train_loss, train_acc, _, __, ___ = do_epoch('train', train_data_loader, model, criterion, optimizer, scheduler,
-                                                     mask, device, layer_unfreeze_count=layer_unfreeze_count)
+                                                      device)
         hist['train_loss'].append(train_loss)
         hist['train_acc'].append(train_acc)
 
         # validation phase
         val_loss, val_acc, val_preds, val_labels, val_paths = do_epoch('val', val_data_loader, model, criterion,
-                                                                       optimizer, scheduler, mask,
-                                                                       device,
-                                                                       layer_unfreeze_count=layer_unfreeze_count)
+                                                                       optimizer, scheduler, device,)
         hist['val_loss'].append(val_loss)
         hist['val_acc'].append(val_acc)
 
@@ -66,7 +63,7 @@ def train_model(device, model, criterion, optimizer, scheduler, train_data_loade
     return model, best_model_wts, best_acc, best_preds, best_labels, best_paths, hist
 
 
-def do_epoch(phase, dataloader, model, criterion, optimizer, scheduler, mask, device, layer_unfreeze_count=99):
+def do_epoch(phase, dataloader, model, criterion, optimizer, scheduler, device):
     print_and_log(f'Start {phase} phase')
     if phase == 'train':
         model.train()  # Set model to training mode
@@ -100,10 +97,7 @@ def do_epoch(phase, dataloader, model, criterion, optimizer, scheduler, mask, de
             # backward + optimize only if in training phase
             if phase == 'train':
                 loss.backward()
-                if mask is not None:
-                    mask.step()
-                else:
-                    optimizer.step()
+                optimizer.step()
 
         # statistics
         running_loss += loss.item() * inputs.size(0)
@@ -123,18 +117,12 @@ def do_epoch(phase, dataloader, model, criterion, optimizer, scheduler, mask, de
 def main():
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
     parser.add_argument('--model', type=str, default='resnet18', help='Model to use.')
-    parser.add_argument('--val_size', type=float, default=0.05, help='Validation size in train-val-test split.')
-    parser.add_argument('--test_size', type=float, default=0.05, help='Test size in train-val-test split.')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size of training and testing data.')
-    parser.add_argument('--layer_unfreeze_count', type=int, default=99, help='Number of layers to unfreeze')
     parser.add_argument('--feature_extract', action='store_true', default=True)
     parser.add_argument('--train', action='store_true', default=True)
-    parser.add_argument('--test', action='store_true', default=False)
     parser.add_argument('--pretrained', action='store_true', default=True)
-    parser.add_argument('--dropout_p', type=float, default=0.5, help='Dropout rate.')
     parser.add_argument('--epochs', type=int, default=64, help='Number of training epochs.')
     parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate.')
-    parser.add_argument('--momentum', type=float, default=0.9, help='Momentum.')
     parser.add_argument('--stepsize', type=int, default=10, help='Stepsize.')
     parser.add_argument('--k_folds', type=int, default=5, help='Kfolds')
     parser.add_argument('--gamma', type=float, default=0.5, help='Reduction of lr.')
@@ -167,7 +155,6 @@ def main():
     # setup model
     num_classes = len(dataset.classes)
     model, input_size = initialize_model(args.model, num_classes, args.feature_extract, args.pretrained)
-    # model.fc.register_forward_hook(lambda m, inp, out: dropout(out, p=args.dropout_p, training=args.train))
 
     # Send the model to GPU
     model = model.to(device)
@@ -211,7 +198,6 @@ def main():
         train_hist = checkpoint['train_hist']
         val_hist = checkpoint['val_hist']
 
-    mask = None
     orig_model_state_dict = model.state_dict()
     orig_optmizer_state_dict = optimizer_ft.state_dict()
     if args.train:
@@ -229,8 +215,7 @@ def main():
                                                                                                  train_loader,
                                                                                                  valid_loader,
                                                                                                  args.epochs,
-                                                                                                 start_epoch, mask,
-                                                                                                 layer_unfreeze_count=args.layer_unfreeze_count)
+                                                                                                 start_epoch)
             if best_acc > folded_best_acc:
                 folded_best_acc = best_acc
                 folded_best_model_wts = best_model_wts
