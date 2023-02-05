@@ -34,10 +34,10 @@ def train_model(device, model, criterion, optimizer, scheduler, train_data_loade
         # Each epoch has a training and validation phase
 
         # training phase
-        train_loss, train_acc, _, __, ___ = do_epoch('train', train_data_loader, model, criterion, optimizer, scheduler,
-                                                      device)
-        hist['train_loss'].append(train_loss)
-        hist['train_acc'].append(train_acc)
+        # train_loss, train_acc, _, __, ___ = do_epoch('train', train_data_loader, model, criterion, optimizer, scheduler,
+        #                                               device)
+        # hist['train_loss'].append(train_loss)
+        # hist['train_acc'].append(train_acc)
 
         # validation phase
         val_loss, val_acc, val_preds, val_labels, val_paths = do_epoch('val', val_data_loader, model, criterion,
