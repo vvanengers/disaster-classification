@@ -5,7 +5,6 @@ import time
 import numpy as np
 import torch
 
-import sparselearning
 from utils.checkpointer import Checkpointer
 from utils.dataloader import load_folded_dataloaders, load_data_from_folder
 from utils.models import initialize_model
@@ -132,7 +131,6 @@ def main():
     parser.add_argument('--result_save_path', type=str, default='results/', help='Where to save the results.')
     parser.add_argument('--dataset_path', type=str, default='data/Incidents-subset',
                         help='Where to load the dataset from')
-    sparselearning.core.add_sparse_args(parser)
     args = parser.parse_args()
 
     setup_logger(args)
