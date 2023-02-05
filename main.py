@@ -198,16 +198,16 @@ def main():
         train_hist = checkpoint['train_hist']
         val_hist = checkpoint['val_hist']
 
-    orig_model_state_dict = model.state_dict()
-    orig_optmizer_state_dict = optimizer_ft.state_dict()
+    orig_model_state_dict = copy.deepcopy(model.state_dict())
+    orig_optmizer_state_dict = copy.deepcopy(optimizer_ft.state_dict())
     if args.train:
         folded_best_acc = 0
         folded_best_model_wts = None
         folded_data_loaders = load_folded_dataloaders(dataset, k_folds=args.k_folds)
         for k, (train_loader, valid_loader) in enumerate(folded_data_loaders):
             print_and_log(f'Started training fold {k}')
-            model.load_state_dict(orig_model_state_dict)
-            optimizer_ft.load_state_dict(orig_optmizer_state_dict)
+            model.load_state_dict(copy.deepcopy(orig_model_state_dict))
+            optimizer_ft.load_state_dict(copy.deepcopy(orig_optmizer_state_dict))
             _, best_model_wts, best_acc, best_preds, best_labels, best_paths, hist = train_model(device, model,
                                                                                                  criterion,
                                                                                                  optimizer_ft,
