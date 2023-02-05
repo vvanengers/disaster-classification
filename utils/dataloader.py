@@ -28,7 +28,7 @@ def load_folded_dataloaders(dataset, k_folds=5, batch_size=64, seed=42):
     for k in range(k_folds):
         print('Loading fold ',k)
         # get all folds except the kth
-        train_folds = dataset_folds[:k] + dataset_folds[k:]
+        train_folds = dataset_folds[:k] + dataset_folds[k+1:]
         valid_fold = dataset_folds[k]
         train_folds = torch.utils.data.ConcatDataset(train_folds)
 

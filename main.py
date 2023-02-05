@@ -4,9 +4,6 @@ import time
 
 import numpy as np
 import torch
-from torch.nn.functional import dropout
-from torch.utils.data import WeightedRandomSampler, DataLoader
-from torchvision import models as tmodels
 
 import sparselearning
 from utils.checkpointer import Checkpointer
@@ -14,11 +11,10 @@ from utils.dataloader import load_folded_dataloaders, load_data_from_folder
 from sparselearning.core import CosineDecay, Masking
 from utils.models import initialize_model
 from utils.other import print_and_log, setup_logger
-from sklearn.model_selection import KFold, train_test_split
 
 
-def train_model(args, device, model, criterion, optimizer, scheduler, train_data_loader, val_data_loader, num_epochs,
-                start_epoch, model_checkpointer, result_checkpointer, mask=None, layer_unfreeze_count=99):
+def train_model(device, model, criterion, optimizer, scheduler, train_data_loader, val_data_loader, num_epochs,
+                start_epoch, mask=None, layer_unfreeze_count=99):
     # start timer
     since = time.time()
 
@@ -40,13 +36,15 @@ def train_model(args, device, model, criterion, optimizer, scheduler, train_data
 
         # training phase
         train_loss, train_acc, _, __, ___ = do_epoch('train', train_data_loader, model, criterion, optimizer, scheduler,
-                                                mask, device, layer_unfreeze_count=layer_unfreeze_count)
+                                                     mask, device, layer_unfreeze_count=layer_unfreeze_count)
         hist['train_loss'].append(train_loss)
         hist['train_acc'].append(train_acc)
 
         # validation phase
-        val_loss, val_acc, val_preds, val_labels, val_paths = do_epoch('val', val_data_loader, model, criterion, optimizer, scheduler, mask,
-                                            device,layer_unfreeze_count=layer_unfreeze_count)
+        val_loss, val_acc, val_preds, val_labels, val_paths = do_epoch('val', val_data_loader, model, criterion,
+                                                                       optimizer, scheduler, mask,
+                                                                       device,
+                                                                       layer_unfreeze_count=layer_unfreeze_count)
         hist['val_loss'].append(val_loss)
         hist['val_acc'].append(val_acc)
 
@@ -160,11 +158,6 @@ def main():
 
     # get dataset
     dataset = load_data_from_folder(args.dataset_path)
-    # train_batches, val_batches, test_batches, names, weight = load_data(args.dataset_path,
-    #                                                                     test_size=args.test_size,
-    #                                                                     batch_size=args.batch_size)
-
-
 
     # set the device to cuda if gpu is available, otherwise use cpu
     d = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -198,7 +191,6 @@ def main():
                 print("\t", name)
 
     # setup criterion with class weighting
-    # criterion = torch.nn.CrossEntropyLoss(weight=torch.tensor(weight, dtype=torch.float)).to(device)
     criterion = torch.nn.CrossEntropyLoss()
 
     # Observe that all parameters are being optimized
@@ -208,7 +200,6 @@ def main():
     exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer_ft, step_size=args.stepsize, gamma=args.gamma)
 
     # load previous model from checkpoint if path is given
-    train_hist, val_hist, loss_hist = [], [], []
     start_epoch = 0
     if args.model_load_path:
         print_and_log(f'Loading model from {args.load_model_path}')
@@ -221,17 +212,6 @@ def main():
         val_hist = checkpoint['val_hist']
 
     mask = None
-    # if args.sparse:
-    #     # setup decay
-    #     decay = CosineDecay(args.death_rate, len(train_batches) * args.epochs)
-    #     # create mask
-    #     mask = Masking(optimizer_ft, death_rate=args.death_rate, death_mode=args.death, death_rate_decay=decay,
-    #                    growth_mode=args.growth,
-    #                    redistribution_mode=args.redistribution, args=args)
-    #     mask.add_module(model, sparse_init=args.sparse_init, density=args.density)
-
-    # kfold_data, test_data, kfold_targets, test_targets = train_test_split(dataset.imgs, dataset.targets,
-    #                                                                       test_size = 0.05, random_state = 42)
     orig_model_state_dict = model.state_dict()
     orig_optmizer_state_dict = optimizer_ft.state_dict()
     if args.train:
@@ -242,15 +222,19 @@ def main():
             print_and_log(f'Started training fold {k}')
             model.load_state_dict(orig_model_state_dict)
             optimizer_ft.load_state_dict(orig_optmizer_state_dict)
-            _, best_model_wts, best_acc, best_preds, best_labels, best_paths, hist = train_model(args, device, model, criterion, optimizer_ft,
-                                                                exp_lr_scheduler, train_loader,valid_loader,
-                                                                args.epochs, start_epoch, model_checkpointer,
-                                                                result_checkpointer, mask,
-                                                                layer_unfreeze_count=args.layer_unfreeze_count)
+            _, best_model_wts, best_acc, best_preds, best_labels, best_paths, hist = train_model(device, model,
+                                                                                                 criterion,
+                                                                                                 optimizer_ft,
+                                                                                                 exp_lr_scheduler,
+                                                                                                 train_loader,
+                                                                                                 valid_loader,
+                                                                                                 args.epochs,
+                                                                                                 start_epoch, mask,
+                                                                                                 layer_unfreeze_count=args.layer_unfreeze_count)
             if best_acc > folded_best_acc:
                 folded_best_acc = best_acc
                 folded_best_model_wts = best_model_wts
-            result_checkpointer.add_in_list('folded_hist',  hist)
+            result_checkpointer.add_in_list('folded_hist', hist)
             result_checkpointer.add_in_list('folded_best_acc', best_acc)
             result_checkpointer.add_in_list('folded_best_preds', best_preds)
             result_checkpointer.add_in_list('folded_best_labels', best_labels)
@@ -258,17 +242,6 @@ def main():
         model_checkpointer.add_singular('folded_best_model_wts', folded_best_model_wts)
         result_checkpointer.save()
         model_checkpointer.save()
-    # if args.test:
-    #     test_dataset = torch.utils.data.TensorDataset(test_data, test_targets)
-    #     test_loader = DataLoader(test_dataset, batch_size=args.batchsize, num_workers=4)
-    #     test_loss, test_acc, all_preds, all_labels, all_paths = do_epoch('test', test_loader, model, criterion, optimizer_ft, exp_lr_scheduler,
-    #                                    mask, device)
-    #     result_checkpointer.add_singular('all_preds', all_preds)
-    #     result_checkpointer.add_singular('all_labels', all_labels)
-    #     result_checkpointer.add_singular('all_paths', all_paths)
-    #     result_checkpointer.add_singular('test_loss', test_loss)
-    #     result_checkpointer.add_singular('test_acc', test_acc)
-    #     result_checkpointer.save()
 
 
 if __name__ == '__main__':
